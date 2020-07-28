@@ -4,14 +4,26 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "ts-node src/server.ts"
   },
-  "type": "module",
   "author": "Emil Ahlbäck <ahlback.emil@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/text-to-speech": "^3.0.0",
+    "@google-cloud/vision": "^2.1.0",
+    "@koa/cors": "^3.1.0",
     "canvas": "^2.6.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "koa": "^2.13.0",
+    "koa-body": "^4.2.0",
+    "koa-router": "^9.1.0",
+    "node-fetch": "^2.6.0",
     "tesseract.js": "^2.1.1",
-    "tmp": "^0.2.1"
+    "tmp": "^0.2.1",
+    "tmp-promise": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.23",
+    "@types/node-fetch": "^2.5.7"
   }
 }
