@@ -48,16 +48,9 @@ router
         const images = parseFiles(JSON.parse(body.info), files)
 
         const enabled: ImageReader[] = JSON.parse(body.enabled)
-        const editing: {
-            transition: string | null,
-            intro: string | null,
-            outro: string | null,
-            song: string | null,
-        } = JSON.parse(body.editing)
-
-        console.log(enabled[0].alwaysShow)
-
-        const vid = await makeVids(enabled, images.map(i => i.image))
+        const settings = JSON.parse(body.settings)
+        
+        const vid = await makeVids(enabled, images.map(i => i.image), settings)
         console.log("FINAL VID: ", vid)
 
         ctx.body = {
