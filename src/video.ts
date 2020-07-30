@@ -1,12 +1,12 @@
+// Could also use gm for image manipulation: https://github.com/aheckmann/gm
+import * as Canvas from 'canvas'
 import * as ffmpeg from 'fluent-ffmpeg'
-import { Rectangle } from './vision'
+import { join } from 'path'
+import { dir, file } from 'tmp-promise'
 import { synthSpeech } from './synth'
 const fs = require('fs')
 
-import { file, dir } from 'tmp-promise'
 
-// Could also use gm for image manipulation: https://github.com/aheckmann/gm
-import * as Canvas from 'canvas'
 
 export interface Rec {
     x: number;
@@ -20,17 +20,53 @@ export interface ImageReader {
     blocks: { block: Rec, text: string }[];
 }
 
-export async function makeVids(imageReaders: ImageReader[], images: string[]): Promise<string> {
+interface Settings {
+    transition?: string,
+    intro?: string,
+    outro?: string,
+    song?: string,
+}
+
+export const filesPath = join(__dirname, "../files")
+
+function intersperse(d: any[], sep: any): any[] {
+    return d.reduce((acc, val, i) => i === 0 ? [...acc, val] : [...acc, sep, val], [])
+}
+
+export async function makeVids(imageReaders: ImageReader[], images: string[], settings: Settings): Promise<string> {
     const promises = imageReaders.map((_, i) => {
         return makeImageThing(imageReaders[i], images[i])
     })
-    const vids = await Promise.all(promises)
+    let vids = await Promise.all(promises)
+    console.log(vids)
+
+    if (settings.intro) vids.unshift(join(filesPath, settings.intro))
+    if (settings.transition) vids = intersperse(vids, join(filesPath, settings.transition))
+    if (settings.outro) vids.push(join(filesPath, settings.outro))
 
     const out = await file({ postfix: '.mp4' })
 
+    console.log("vids are", vids)
+
     await simpleConcat(vids.filter(v => v), out.path)
 
-    return out.path
+    if (settings.song) {
+        const songout = await file({ postfix: '.mp4' })
+
+        await new Promise((res, rej) =>
+            ffmpeg(out.path)
+                .input(join(filesPath, settings.song!))
+                .audioCodec('aac')
+                .videoCodec('copy')
+                .save(songout.path)
+                .on('end', () => res())
+                .on('error', () => rej())
+        )
+
+        return songout.path
+    } else {
+        return out.path
+    }
 }
 
 async function makeImageThing(imageReader: ImageReader, image: string | Buffer): Promise<string | null> {
@@ -106,15 +142,12 @@ function simpleConcat(videoPaths, outPath) {
     return new Promise(async (res, rej) => {
         let tempdir = await dir()
 
-        console.log(videoPaths)
-
         let f = ffmpeg()
         videoPaths.forEach(v => {
             f.input(v)
         })
         f
             .on('end', () => {
-                console.log("done!")
                 res()
                 tempdir.cleanup()
             })

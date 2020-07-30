@@ -24,7 +24,7 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
             const img = new Image()
             img.onload = () => {
                 const canv = canvasRef.current
-                const maxWidth = 1200
+                const maxWidth = 900
                 const scale = Math.min(1, maxWidth / img.width)
                 canv.width = img.width * scale
                 canv.height = img.height * scale
@@ -50,7 +50,7 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
         // Draw the blocks
         blocks.forEach(({ x, y, width, height }, i) => {
             const enabled = enabledBlocks[i] !== false
-            ctx.strokeStyle = enabled ? "aliceblue" : "tomato"
+            ctx.strokeStyle = enabled ? "lightgreen" : "tomato"
             ctx.lineWidth = 2
             ctx.strokeRect(x, y, width, height)
             if (enabled) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import FileImage from './FileImage';
 import apiFetch from './apiFetch';
 
@@ -29,6 +29,21 @@ function mapBlock(block) {
 }
 
 const padding = 3
+
+function settingsReducer(state, action) {
+    if (action.data == '') action.data = null
+    
+    switch (action.type) {
+        case "intro":
+            return { ...state, intro: action.data }
+        case "transition":
+            return { ...state, transition: action.data }
+        case "outro":
+            return { ...state, outro: action.data }
+        case "song":
+            return { ...state, song: action.data }
+    }
+}
 
 export default function Edit({ res, images, onFinish }) {
     const [index, setIndex] = useState(0)
@@ -101,7 +116,8 @@ export default function Edit({ res, images, onFinish }) {
         return () => document.removeEventListener("keydown", func)
     }, [])
 
-    const submit = () => {
+    const submit = (e) => {
+        e.preventDefault()
         const blocks = drawBlocks.map((b, i) => {
             let enabled = enabledBlocks[i]
             let texts = textBlocks[i]
@@ -121,17 +137,20 @@ export default function Edit({ res, images, onFinish }) {
                 blocks: enabledDraws,
             }
         })
-        onFinish(blocks, images)
+        onFinish(blocks, images, settings)
     }
 
     const [showingSettings, setShowSettings] = useState(false)
+
+    const [settings, dispatchSettings] = useReducer(settingsReducer, { intro: null, outro: null, transition: null, song: null })
+    const dispatchSet = type => e => dispatchSettings({ type, data: e.target.value })
 
     const [files, setFiles] = useState(null)
 
     useEffect(() => {
         apiFetch('/files')
             .then(d => d.json())
-            .then((files) => {
+            .then(files => {
                 setFiles(files)
             })
     }, [])
@@ -140,11 +159,55 @@ export default function Edit({ res, images, onFinish }) {
         <div>
             {showingSettings ?
                 <div>
-                    <select>
-                        {files.videos.map(file =>
-                            <option value={file}>{file}</option>
-                        )}
-                    </select>
+                    <form>
+                        <div>
+                            <label>
+                                <div>Intro</div>
+                                <select value={settings.intro} onChange={dispatchSet("intro")}>
+                                    <option value="">None</option>
+                                    {files.videos.map(file =>
+                                        <option value={file}>{file}</option>
+                                    )}
+                                </select>
+                            </label>
+                        </div>
+                        <div>
+                            <label>
+                                <div>Transition</div>
+                                <select value={settings.transition} onChange={dispatchSet("transition")}>
+                                    <option value="">None</option>
+                                    {files.videos.map(file =>
+                                        <option value={file}>{file}</option>
+                                    )}
+                                </select>
+                            </label>
+                        </div>
+                        <div>
+                            <label>
+                                <div>Outro</div>
+                                <select value={settings.outro} onChange={dispatchSet("outro")}>
+                                    <option value="">None</option>
+                                    {files.videos.map(file =>
+                                        <option value={file}>{file}</option>
+                                    )}
+                                </select>
+                            </label>
+                        </div>
+                        <div>
+                            <label>
+                                <div>Song</div>
+                                <select value={settings.song} onChange={dispatchSet("song")}>
+                                    <option value="">None</option>
+                                    {files.songs.map(file =>
+                                        <option value={file}>{file}</option>
+                                    )}
+                                </select>
+                            </label>
+                        </div>
+
+                        <button onClick={submit}>Finish</button>
+                    </form>
+                    <button onClick={() => setShowSettings(false)}>Back</button>
                 </div>
                 :
                 <div>

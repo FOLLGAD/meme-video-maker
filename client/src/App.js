@@ -12,8 +12,9 @@ function App() {
     setImages(Array.from(images))
   }
 
-  const finished = (blocks, images) => {
+  const finished = (blocks, images, settings) => {
     const fd = new FormData()
+    console.log(settings)
 
     // Append files to formdata
     const info = []
@@ -26,6 +27,7 @@ function App() {
 
     fd.append("info", JSON.stringify(info))
     fd.append("enabled", JSON.stringify(blocks))
+    fd.append("settings", JSON.stringify(settings))
 
     apiFetch('/make-vid', {
       body: fd,
