@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/server.ts"
+    "dev": "ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "build-client": "cd client && npm run build"
   },
   "author": "Emil Ahlbäck <ahlback.emil@gmail.com>",
   "license": "ISC",
@@ -12,15 +15,22 @@
     "@google-cloud/text-to-speech": "^3.0.0",
     "@google-cloud/vision": "^2.1.0",
     "@koa/cors": "^3.1.0",
+    "@types/fluent-ffmpeg": "^2.1.14",
+    "@types/koa": "^2.11.3",
+    "@types/koa-router": "^7.4.1",
+    "@types/uuid": "^8.0.0",
+    "aws-sdk": "^2.725.0",
     "canvas": "^2.6.1",
+    "dotenv": "^8.2.0",
     "fluent-ffmpeg": "^2.1.2",
     "koa": "^2.13.0",
     "koa-body": "^4.2.0",
+    "koa-bodyparser": "^4.3.0",
     "koa-router": "^9.1.0",
     "node-fetch": "^2.6.0",
-    "tesseract.js": "^2.1.1",
     "tmp": "^0.2.1",
-    "tmp-promise": "^3.0.2"
+    "tmp-promise": "^3.0.2",
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
     "@types/node": "^14.0.23",

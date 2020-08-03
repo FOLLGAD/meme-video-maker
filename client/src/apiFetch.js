@@ -1,5 +1,5 @@
-export default function apiFetch(url, ...props) {
-    const nurl = `http://localhost:7000${url}`
+export const apiUrl = process.env.REACT_APP_API_URL
 
-    return fetch(nurl.toString(), ...props)
+export default function apiFetch(url, ...props) {
+    return fetch(apiUrl + url, ...props)
 }

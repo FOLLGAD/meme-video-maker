@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 // Gets the mouse click position within the canvas
 function getCursorPosition(canvas, event) {
@@ -62,17 +62,17 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
     }
 
     const [mouseDownAt, setMouseDownAt] = useState(null)
-    const onCanvasMouse = event => {
-        if (!selectAlwaysShow) return
-
+    const onCanvasMouseDown = event => {
         const [mouseX, mouseY] = getCursorPosition(canvasRef.current, event)
-            .map(d => d / scale)
+            .map(p => p / scale)
 
-        if (event.type === "mousedown") {
-            setMouseDownAt([mouseX, mouseY])
-        } else if (event.type === "mouseup") {
-            if (!mouseDownAt) return;
+        setMouseDownAt([mouseX, mouseY])
+    }
+    const onCanvasMouseUp = event => {
+        const [mouseX, mouseY] = getCursorPosition(canvasRef.current, event)
+            .map(p => p / scale)
 
+        if (selectAlwaysShow && mouseDownAt) {
             const [lastX, lastY] = mouseDownAt
             const rec = {
                 x: Math.min(mouseX, lastX),
@@ -82,18 +82,18 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
             }
             setMouseDownAt(null)
 
-            if (rec.height < 5 || rec.width < 5) return;
-
-            setAlwaysShow([...alwaysShow, rec])
-        } else {
-            console.error("unhandled event", event.type)
+            if (rec.height > 5 && rec.width > 5) {
+                setAlwaysShow([...alwaysShow, rec])
+                return
+            } else {
+                // Try to delete
+                const ind = alwaysShow.findIndex(a => a.x < mouseX && a.y < mouseY && a.x + a.width > mouseX && a.y + a.height > mouseY)
+                if (ind !== -1) {
+                    setAlwaysShow([...alwaysShow.slice(0, ind), ...alwaysShow.slice(ind + 1)])
+                    return
+                }
+            }
         }
-    }
-
-    const onCanvasClick = event => {
-        event.preventDefault()
-        const [mouseX, mouseY] = getCursorPosition(canvasRef.current, event)
-            .map(p => p / scale)
 
         const index = blocks.findIndex(({ x, y, width, height }) => {
             const intersects = mouseX >= x && mouseX <= x + width
@@ -115,28 +115,29 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
         }
     }
 
-    const isAllEnabled = () => enabledBlocks.every(v => v !== false)
+    const isAllEnabled = useCallback(() => enabledBlocks.every(v => v !== false), [enabledBlocks])
 
-    const enableAll = () => {
+    const enableAll = useCallback(() => {
         const enab = enabledBlocks.map((_, i) => i)
         setEnabledBlocks(enab)
-    }
-    const disableAll = () => {
+    }, [enabledBlocks, setEnabledBlocks])
+
+    const disableAll = useCallback(() => {
         const enab = enabledBlocks.map(() => false)
         setEnabledBlocks(enab)
-    }
+    }, [enabledBlocks, setEnabledBlocks])
 
-    useEffect(() => {
-        const func = e => {
-            if (e.code === "KeyA") {
-                isAllEnabled() ? disableAll() : enableAll()
-            }
-        }
-        document.addEventListener("keypress", func)
+    // useEffect(() => {
+    //     const func = e => {
+    //         if (e.code === "KeyA") {
+    //             isAllEnabled() ? disableAll() : enableAll()
+    //         }
+    //     }
+    //     document.addEventListener("keyup", func)
 
-        // Cleanup
-        return () => document.removeEventListener("keypress", func)
-    })
+    //     // Cleanup
+    //     return () => document.removeEventListener("keyup", func)
+    // }, [isAllEnabled, disableAll, enableAll])
 
     useEffect(() => {
         if (canvasRef.current && ctx)
@@ -147,11 +148,14 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
 
     }, [enabledBlocks, blocks, src, ctx, alwaysShow])
 
-    const updateText = (e, i) => {
+    const updateText = i => e => {
         e.preventDefault()
+
         textBlocks[i] = e.target.value
         setTextBlocks(textBlocks)
     }
+
+    const stopProp = e => e.stopPropagation()
 
     return (
         <div style={{ display: "flex" }}>
@@ -161,20 +165,20 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
                     : <button onClick={() => setAlwShow(true)}>Select always show</button>
                 }
                 {isAllEnabled() ?
-                    <button onClick={disableAll}>Disable all (A)</button> :
-                    <button onClick={enableAll}>Enable all (A)</button>
+                    <button onClick={disableAll}>Disable all</button> :
+                    <button onClick={enableAll}>Enable all</button>
                 }
             </div>
             <div>
-                <canvas onClick={onCanvasClick} onMouseDown={onCanvasMouse} onMouseUp={onCanvasMouse} ref={canvasRef} />
+                <canvas onMouseDown={onCanvasMouseDown} onMouseUp={onCanvasMouseUp} ref={canvasRef} />
             </div>
-            <div>
+            <div style={{ width: 400 }}>
                 {textBlocks
                     .map((e, i) => [e, i])
                     .filter((_, i) => enabledBlocks[i] !== false)
                     .map(([t, i]) => (
                         <div key={i}>
-                            <textarea cols="30" rows="8" onChange={(e) => updateText(e, i)} value={t} />
+                            <textarea style={{ width: "100%" }} rows="5" onKeyUp={stopProp} onKeyDown={stopProp} onChange={updateText(i)} value={t} />
                         </div>
                     ))}
             </div>

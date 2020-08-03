@@ -1,12 +1,20 @@
-// Could also use gm for image manipulation: https://github.com/aheckmann/gm
+// TODO: Could also use gm for image manipulation: https://github.com/aheckmann/gm
 import * as Canvas from 'canvas'
 import * as ffmpeg from 'fluent-ffmpeg'
 import { join } from 'path'
 import { dir, file } from 'tmp-promise'
 import { synthSpeech } from './synth'
-const fs = require('fs')
 
-
+// Ffprobe
+// Usually takes ~40ms
+const probe = function (path) {
+    return new Promise((res, rej) => {
+        ffmpeg.ffprobe(path, (err, data) => {
+            if (err) rej(err);
+            else res(data);
+        })
+    })
+}
 
 export interface Rec {
     x: number;
@@ -25,6 +33,7 @@ interface Settings {
     intro?: string,
     outro?: string,
     song?: string,
+    voice?: string,
 }
 
 export const filesPath = join(__dirname, "../files")
@@ -33,35 +42,38 @@ function intersperse(d: any[], sep: any): any[] {
     return d.reduce((acc, val, i) => i === 0 ? [...acc, val] : [...acc, sep, val], [])
 }
 
-export async function makeVids(imageReaders: ImageReader[], images: string[], settings: Settings): Promise<string> {
+async function parallell(imageReaders: ImageReader[], images: string[], settings: Settings) {
     const promises = imageReaders.map((_, i) => {
-        return makeImageThing(imageReaders[i], images[i])
+        return makeImageThing(imageReaders[i], images[i], settings)
     })
-    let vids = await Promise.all(promises)
-    console.log(vids)
+    return await Promise.all(promises)
+}
 
-    if (settings.intro) vids.unshift(join(filesPath, settings.intro))
-    if (settings.transition) vids = intersperse(vids, join(filesPath, settings.transition))
-    if (settings.outro) vids.push(join(filesPath, settings.outro))
+async function serial(imageReaders: ImageReader[], images: string[], settings: Settings) {
+    let arr: (string | null)[] = []
+    for (let i = 0; i < imageReaders.length; i++) {
+        const result = await makeImageThing(imageReaders[i], images[i], settings)
+        arr.push(result)
+    }
+    return arr
+}
+
+export async function makeVids(imageReaders: ImageReader[], images: string[], settings: Settings): Promise<string> {
+    let vids = await serial(imageReaders, images, settings)
+
+    if (settings.transition) vids = intersperse(vids, settings.transition)
+
+    if (settings.intro) vids.unshift(settings.intro)
+    if (settings.outro) vids.push(settings.outro)
 
     const out = await file({ postfix: '.mp4' })
-
-    console.log("vids are", vids)
 
     await simpleConcat(vids.filter(v => v), out.path)
 
     if (settings.song) {
         const songout = await file({ postfix: '.mp4' })
 
-        await new Promise((res, rej) =>
-            ffmpeg(out.path)
-                .input(join(filesPath, settings.song!))
-                .audioCodec('aac')
-                .videoCodec('copy')
-                .save(songout.path)
-                .on('end', () => res())
-                .on('error', () => rej())
-        )
+        await combineVideoAudio(out.path, settings.song!, songout.path)
 
         return songout.path
     } else {
@@ -69,7 +81,7 @@ export async function makeVids(imageReaders: ImageReader[], images: string[], se
     }
 }
 
-async function makeImageThing(imageReader: ImageReader, image: string | Buffer): Promise<string | null> {
+async function makeImageThing(imageReader: ImageReader, image: string, settings: Settings): Promise<string | null> {
     if (imageReader.blocks.length === 0) {
         return null
     }
@@ -101,7 +113,7 @@ async function makeImageThing(imageReader: ImageReader, image: string | Buffer):
         // Clear text
         ctx.clearRect(0, 0, width, readRect.block.y + readRect.block.height)
 
-        const speechFile = await synthSpeech({ text: readRect.text, voice: "daniel" })
+        const speechFile = await synthSpeech({ text: readRect.text, voice: settings.voice || "daniel" })
 
         const f: { path: string } = await new Promise(async (res, rej) => {
             const f = await file({ postfix: '.mp4' })
@@ -122,6 +134,11 @@ async function makeImageThing(imageReader: ImageReader, image: string | Buffer):
                 .aspect('16:9')
                 .autopad()
                 .audioCodec('aac')
+                .outputOptions([
+                    "-pix_fmt yuv420p",
+                ])
+                .audioFrequency(24000)
+                .audioChannels(2)
                 .fps(25)
                 .videoCodec('libx264')
                 .save(f.path)
@@ -155,6 +172,42 @@ function simpleConcat(videoPaths, outPath) {
                 console.error(err)
                 rej(err)
             })
+            // @ts-ignore
             .mergeToFile(outPath, tempdir.path)
+    })
+}
+
+// TODO: scroll long images with video
+
+/* 
+    Overlays audio over a video clip, repeating it ad inifinitum.
+*/
+function combineVideoAudio(videoPath, audioPath, outPath) {
+    return new Promise(async (res, rej) => {
+        let videoInfo: any = await probe(videoPath)
+
+        ffmpeg(videoPath)
+            .videoCodec('libx264')
+            .input(audioPath)
+            .audioCodec('aac')
+            .inputOptions([
+                '-stream_loop -1', // Repeats audio until it hits the previously set duration [https://stackoverflow.com/a/34280687/6912118]
+            ])
+            .duration(videoInfo.format.duration) // Run for the duration of the video
+            .complexFilter(['[0:a][1:a] amerge=inputs=2 [a]'])
+            .fpsOutput(25)
+            .outputOptions([
+                '-map 0:v',
+                '-map [a]',
+            ])
+            .audioChannels(1)
+            .on('end', () => {
+                res()
+            })
+            .on('error', err => {
+                console.error(err)
+                rej()
+            })
+            .save(outPath)
     })
 }

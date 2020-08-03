@@ -1,12 +1,11 @@
-import * as Tesseract from 'tesseract.js'
-const { createWorker } = Tesseract
+// import * as Tesseract from 'tesseract.js'
+// const { createWorker } = Tesseract
 
-const worker = createWorker({
-    logger: m => console.log(m)
-})
+// const worker = createWorker({
+//     logger: m => console.log(m)
+// })
 
-import vision from '@google-cloud/vision';
-const credentials = require("../creds/vision.json")
+import vision from '@google-cloud/vision'
 
 export interface Rectangle {
     left: number;
@@ -19,6 +18,9 @@ interface ImageObject {
     image: string | Buffer;
 }
 
+// Vision client
+const client = new vision.ImageAnnotatorClient({});
+
 export async function readImages(imageObject: ImageObject[]) {
     const promises = imageObject.map((i) => {
         return client.textDetection(i.image)
@@ -26,28 +28,25 @@ export async function readImages(imageObject: ImageObject[]) {
     return await Promise.all(promises)
 }
 
-// Vision client
-const client = new vision.ImageAnnotatorClient({ credentials: credentials });
-
 // visionReadImage(meme).then(a => console.log(a))
 
-async function visionReadImage(image: string | Buffer) {
-    const [result] = await client.textDetection(image)
-    const detects = result.textAnnotations
-    return detects?.join(" ") || ""
-}
+// async function visionReadImage(image: string | Buffer) {
+//     const [result] = await client.textDetection(image)
+//     const detects = result.textAnnotations
+//     return detects?.join(" ") || ""
+// }
 
 // tesseractReadImagePart(meme, rectangle)
 
-async function tesseractReadImagePart(image: string | Buffer, rectangle: Rectangle) {
-    await worker.load()
-    await worker.loadLanguage('eng')
-    await worker.initialize('eng')
+// async function tesseractReadImagePart(image: string | Buffer, rectangle: Rectangle) {
+//     await worker.load()
+//     await worker.loadLanguage('eng')
+//     await worker.initialize('eng')
 
-    // Maybe use Google Vision https://cloud.google.com/vision/pricing instead? Faster
-    const { data: { text } } = await worker.recognize(image, { rectangle })
+//     // Maybe use Google Vision https://cloud.google.com/vision/pricing instead? Faster
+//     const { data: { text } } = await worker.recognize(image, { rectangle })
 
-    await worker.terminate()
+//     await worker.terminate()
 
-    return text
-}
+//     return text
+// }

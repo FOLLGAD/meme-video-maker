@@ -36,10 +36,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-// const nodeFetch = require('node-fetch')
-var c = require('crypto');
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.makeCall = void 0;
+var node_fetch_1 = require("node-fetch");
+var crypto = require("crypto");
 function getMd5Hash(string) {
-    var md5Sum = c.createHash('md5');
+    var md5Sum = crypto.createHash('md5');
     md5Sum.update(string);
     return md5Sum.digest('hex');
 }
@@ -53,38 +55,36 @@ function getChecksum(text, engine, language, voice, acc) {
     return getMd5Hash("" + engine + language + voice + text + '1' + 'mp3' + acc + 'uetivb9tb8108wfj');
 }
 function getTextPromise(engine, language, voice, text, acc, checksum) {
-    return new Promise(function (resolve, reject) {
-        fetch("http://cache-a.oddcast.com/tts/gen.php?EID=" + engine + "&LID=" + language + "&VID=" + voice + "&TXT=" + text + "&IS_UTF8=1&EXT=mp3&FNAME&ACC=" + acc + "&API&SESSION&CS=" + checksum + "&cache_flag=3", {
-            headers: {
-                'Host': 'cache-a.oddcast.com',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
-                'Accept': 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5',
-                'Accept-Language': 'sv-SE,sv;q=0.8,en-US;q=0.5,en;q=0.3',
-                'Range': 'bytes=0-',
-                'Referer': 'http://www.oddcast.com/ttsdemo/index.php',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Cookie': 'lastLoginURL=https%3A%2F%2Fvhss.oddcast.com%2Fadmin%2F%3F; y=esAHc9ANyahS30fiLAc00',
-            },
-        }).then(function (res) {
-            if (res.headers.get('Content-Type') === 'audio/mpeg') {
-                resolve(res);
-            }
-            else {
-                console.log("Got Content-Type:", res.headers.get('Content-Type'));
-                console.error('An error ocurred with Daniel on:', text);
-                reject(new Error("400"));
-            }
-        }).catch(function (err) {
-            console.error("Daniel: Request failed");
-            reject(err);
-        });
+    return node_fetch_1.default("http://cache-a.oddcast.com/tts/gen.php?EID=" + engine + "&LID=" + language + "&VID=" + voice + "&TXT=" + text + "&IS_UTF8=1&EXT=mp3&FNAME&ACC=" + acc + "&API&SESSION&CS=" + checksum + "&cache_flag=3", {
+        headers: {
+            'Host': 'cache-a.oddcast.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
+            'Accept': 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5',
+            'Accept-Language': 'sv-SE,sv;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Range': 'bytes=0-',
+            'Referer': 'http://www.oddcast.com/ttsdemo/index.php',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Cookie': 'lastLoginURL=https%3A%2F%2Fvhss.oddcast.com%2Fadmin%2F%3F; y=esAHc9ANyahS30fiLAc00',
+        },
+    }).then(function (res) {
+        if (res.headers.get('Content-Type') === 'audio/mpeg') {
+            return res;
+        }
+        else {
+            console.log("Got Content-Type:", res.headers.get('Content-Type'));
+            console.error('An error ocurred with Daniel on:', text);
+            throw new Error("400");
+        }
+    }).catch(function (err) {
+        console.error("Daniel: Request failed");
+        throw err;
     });
 }
 // Make call will return a request with the mp3 file
 // "text" cannot include some characters, like [><\n]
 // Usually takes between 2-5 seconds
-module.exports.makeCall = function (text, engine, language, voice) {
+function makeCall(text, engine, language, voice) {
     if (engine === void 0) { engine = 4; }
     if (language === void 0) { language = 1; }
     if (voice === void 0) { voice = 5; }
@@ -96,14 +96,17 @@ module.exports.makeCall = function (text, engine, language, voice) {
                     text = text
                         .replace(/&/g, ' and ') // '&' doesn't work for Daniel, he says &amp instead
                         .replace(/[<>]/g, '') // < and > makes the request fail
-                        .replace('\n', '')
-                        .trim(); // remove unneccessary whitespace
+                        // .replace('\n', '')
+                        .split("\n")
+                        .map(function (line) { return line.trim(); })
+                        .map(function (line) { return line[0].toUpperCase() + line.slice(1) + " ("; })
+                        .join("\n");
                     newtext = encodeURIComponent(text);
                     acc = 5883747;
                     checksum = getChecksum(text, engine, language, voice, acc);
                     tries = 0;
                     _loop_1 = function () {
-                        var t, err_1, retrytime_1;
+                        var p, t, err_1, retrytime_1;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
@@ -111,7 +114,8 @@ module.exports.makeCall = function (text, engine, language, voice) {
                                     _a.label = 1;
                                 case 1:
                                     _a.trys.push([1, 3, , 5]);
-                                    return [4 /*yield*/, timeoutPromise(5000, getTextPromise(engine, language, voice, newtext, acc, checksum))];
+                                    p = getTextPromise(engine, language, voice, newtext, acc, checksum);
+                                    return [4 /*yield*/, timeoutPromise(5000, p)];
                                 case 2:
                                     t = _a.sent();
                                     return [2 /*return*/, { value: t }];
@@ -143,7 +147,9 @@ module.exports.makeCall = function (text, engine, language, voice) {
             }
         });
     });
-};
+}
+exports.makeCall = makeCall;
+// Takes a timeout and a promise, rejects promise if promise is not resolved within the timespan
 function timeoutPromise(ms, promise) {
     return new Promise(function (resolve, reject) {
         var timeoutId = setTimeout(function () {

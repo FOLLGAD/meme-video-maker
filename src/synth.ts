@@ -1,9 +1,19 @@
 // This file is for the tts calls
 
-const fs = require('fs')
-const { makeCall } = require('./daniel')
-const { spawn } = require('child_process')
-const tmp = require('tmp')
+import fs = require('fs')
+import { makeCall } from './daniel'
+import { spawn } from 'child_process'
+import tmp = require('tmp')
+
+import textToSpeech = require('@google-cloud/text-to-speech')
+const client = new textToSpeech.TextToSpeechClient({})
+
+const defaultVoiceSettings = {
+	speakingRate: 0.98,
+	"languageCode": "en-US",
+	"voiceName": "en-US-Wavenet-D",
+	pitch: -2.0,
+}
 
 export function synthSpeech({ text, voice }: { text: string, voice: string }) {
 	if (!/[\d\w]/.test(text)) { // If no letter or number is in text, don't produce it
@@ -66,47 +76,43 @@ export function macTTSToFile(text) {
 	})
 }
 
-const textToSpeech = require('@google-cloud/text-to-speech')
-const client = new textToSpeech.TextToSpeechClient()
-
-const defaultVoiceSettings = {
-	speakingRate: 0.98,
-	"languageCode": "en-US",
-	"voiceName": "en-US-Wavenet-D",
-	pitch: -2.0,
-}
-
 export function synthGoogle(text, voiceSettings = defaultVoiceSettings) {
-	const request = {
+	text = text
+		.replace(/[><]/g, "") // Remove greater/less than
+		.split("\n")
+		.map(line => line.trim())
+		.map(line => line + ".")
+		.join("\n")
+
+	const request: textToSpeech.protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
 		input: { text: text },
-		voice: { languageCode: voiceSettings.languageCode, ssmlGender: 'MALE', name: voiceSettings.voiceName },
+		voice: { languageCode: voiceSettings.languageCode, ssmlGender: "MALE", name: voiceSettings.voiceName },
 		audioConfig: { audioEncoding: 'MP3', speakingRate: voiceSettings.speakingRate, pitch: voiceSettings.pitch },
 	}
 
-	let promise = new Promise((resolve, reject) => {
+	return new Promise((res, rej) => {
 		let file = tmp.fileSync({ postfix: '.mp3' })
 		let filepath = file.name
 
 		client.synthesizeSpeech(request, (err, response) => {
-			if (err) {
-				return reject(err)
+			if (err || !response || !response.audioContent) {
+				return rej(err)
 			}
+			if (typeof response.audioContent === "string") {
+				return rej()
+			}
+
 			// Write the binary audio content to a local file
-			fs.writeFile(filepath, response.audioContent, 'binary', err => {
-				if (err) {
-					return reject(err)
-				}
-				resolve(filepath)
-			})
+			fs.writeFile(filepath, response.audioContent, 'binary',
+				err => err ? rej(err) : res(filepath))
 		})
 	})
-	return promise
 }
 
 export function synthOddcast(text) {
 	return new Promise((resolve, reject) => {
 		makeCall(text)
-			.then(res => res.buffer())
+			.then((res: any): Buffer => res.buffer())
 			.then(buffer => {
 				let file = tmp.fileSync({ postfix: '.mp3' })
 				let filepath = file.name

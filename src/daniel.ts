@@ -1,7 +1,7 @@
 // This file is for the Oddcast API calls
 
 import fetch from 'node-fetch'
-const crypto = require('crypto')
+import crypto = require('crypto')
 
 function getMd5Hash(string: string) {
 	let md5Sum = crypto.createHash('md5')
@@ -45,7 +45,7 @@ function getTextPromise(engine, language, voice, text, acc, checksum) {
 // Make call will return a request with the mp3 file
 // "text" cannot include some characters, like [><\n]
 // Usually takes between 2-5 seconds
-module.exports.makeCall = async function (text: string, engine = 4, language = 1, voice = 5) {
+export async function makeCall(text: string, engine = 4, language = 1, voice = 5) {
 	text = text
 		.replace(/&/g, ' and ') // '&' doesn't work for Daniel, he says &amp instead
 		.replace(/[<>]/g, '')   // < and > makes the request fail

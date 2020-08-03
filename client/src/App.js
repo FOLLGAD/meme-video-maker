@@ -1,20 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Upload from './Upload';
+import UploadTheme from './UploadTheme';
 import Edit from './Edit';
 import apiFetch from './apiFetch';
+import VideoList from './VideoList';
 
 function App() {
   const [images, setImages] = useState(null)
   const [res, setRes] = useState(null)
+  const [dirty, setDirty] = useState(false)
 
   const loadData = ({ images, res }) => {
     setRes(res)
     setImages(Array.from(images))
+    setDirty(true)
   }
+
+  useEffect(() => {
+    const func = e => {
+      if (dirty) e.preventDefault()
+    }
+    window.addEventListener("beforeunload", func)
+    return () => window.removeEventListener("beforeunload", func)
+  }, [dirty])
 
   const finished = (blocks, images, settings) => {
     const fd = new FormData()
-    console.log(settings)
 
     // Append files to formdata
     const info = []
@@ -29,22 +40,33 @@ function App() {
     fd.append("enabled", JSON.stringify(blocks))
     fd.append("settings", JSON.stringify(settings))
 
-    apiFetch('/make-vid', {
+    return apiFetch('/make-vid', {
       body: fd,
       method: 'POST',
     })
       .then(d => d.json())
-      .then((d) => {
-        console.log(d)
-      })
   }
 
   return (
-    <div>
+    <div className="app">
       {images ?
         <Edit res={res} images={images} onFinish={finished} />
         :
-        <Upload setData={loadData} />
+        <div style={{ display: 'flex' }}>
+          <div style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>
+            <div className="card">
+              <h3>Upload image files</h3>
+              <Upload setData={loadData} />
+            </div>
+            <div className="card">
+              <h3>Upload intro/outro/transition/song</h3>
+              <UploadTheme />
+            </div>
+          </div>
+          <div className="card" style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>
+            <VideoList />
+          </div>
+        </div>
       }
     </div>
   )

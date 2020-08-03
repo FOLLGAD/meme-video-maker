@@ -32,8 +32,12 @@ export default function Form({ setData }) {
     return (
         <div>
             <form id="formed">
-                <input ref={filesInp} accept="png" type="file" required multiple />
-                <input type="submit" value="Go" onClick={submit} />
+                <div>
+                    <input ref={filesInp} accept="png" type="file" required multiple />
+                </div>
+                <div style={{paddingTop: 10}}>
+                    <input type="submit" value="Go" onClick={submit} />
+                </div>
             </form>
         </div>
     )

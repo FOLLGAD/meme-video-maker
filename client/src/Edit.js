@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useReducer } from 'react';
+import React, { useCallback, useMemo, useReducer, useState } from 'react';
 import FileImage from './FileImage';
-import apiFetch from './apiFetch';
+import Settings from './Settings';
 
 function mapBlock(block) {
     const vert = block.boundingBox.vertices
@@ -15,7 +15,7 @@ function mapBlock(block) {
                 const dBreak = property && property.detectedBreak
 
                 if (dBreak && (dBreak.type === "LINE_BREAK" || dBreak.type === "EOL_SURE_SPACE"))
-                    text += "\n"
+                    return text + "\n"
 
                 return text
             }).join("")
@@ -23,7 +23,7 @@ function mapBlock(block) {
         // remove >>12321332 (OP), >>1232313 (You)
         parag = parag.replace(/>>\d+([^\w\n]*.+)?/g, "").trim()
         return parag
-    }).join("\n")
+    }).join("\n").split("\n").map(d => d.trim()).join("\n")
 
     return { text, x: x - padding, y: y - padding, width: width + padding * 2, height: height + padding * 2 }
 }
@@ -31,8 +31,6 @@ function mapBlock(block) {
 const padding = 3
 
 function settingsReducer(state, action) {
-    if (action.data == '') action.data = null
-    
     switch (action.type) {
         case "intro":
             return { ...state, intro: action.data }
@@ -42,6 +40,10 @@ function settingsReducer(state, action) {
             return { ...state, outro: action.data }
         case "song":
             return { ...state, song: action.data }
+        case "voice":
+            return { ...state, voice: action.data }
+        default:
+            console.error("undefined type", action.type)
     }
 }
 
@@ -49,8 +51,8 @@ export default function Edit({ res, images, onFinish }) {
     const [index, setIndex] = useState(0)
     const [alwaysShow, setAlwaysShow] = useState([])
 
-    const nextIndex = () => setIndex(Math.min(index + 1, images.length - 1))
-    const prevIndex = () => setIndex(Math.max(index - 1, 0))
+    const nextIndex = useCallback(() => setIndex(Math.min(index + 1, images.length - 1)), [index, images])
+    const prevIndex = useCallback(() => setIndex(Math.max(index - 1, 0)), [index])
 
     const [enabledBlocks, setEnabledBlocks] = useState([])
     const [textBlocks, setTextBlocks] = useState([])
@@ -79,11 +81,6 @@ export default function Edit({ res, images, onFinish }) {
                 v.slice()
         }))
 
-    /**
-     * alwaysShow = Rect[][]
-     * enabledBlocks = Rect[][]
-     */
-
     const img = images[index]
 
     const drawBlocks = useMemo(() => {
@@ -97,26 +94,26 @@ export default function Edit({ res, images, onFinish }) {
         return draw
     }, [res])
 
-    useEffect(() => {
-        const func = ({ keyCode, repeat }) => {
-            // if (repeat) return
+    // useEffect(() => {
+    //     const func = ({ keyCode, repeat }) => {
+    //         // if (repeat) return
 
-            switch (keyCode) {
-                case 37:
-                    prevIndex()
-                    break
-                case 39:
-                    nextIndex()
-                    break
-            }
-        }
-        document.addEventListener("keydown", func)
+    //         switch (keyCode) {
+    //             case 37:
+    //                 prevIndex()
+    //                 break
+    //             case 39:
+    //                 nextIndex()
+    //                 break
+    //         }
+    //     }
+    //     document.addEventListener("keydown", func)
 
-        // Cleanup
-        return () => document.removeEventListener("keydown", func)
-    }, [])
+    //     // Cleanup
+    //     return () => document.removeEventListener("keydown", func)
+    // }, [prevIndex, nextIndex])
 
-    const submit = (e) => {
+    const onSubmit = async (e) => {
         e.preventDefault()
         const blocks = drawBlocks.map((b, i) => {
             let enabled = enabledBlocks[i]
@@ -137,95 +134,62 @@ export default function Edit({ res, images, onFinish }) {
                 blocks: enabledDraws,
             }
         })
-        onFinish(blocks, images, settings)
+
+        try {
+            await onFinish(blocks, images, settings)
+            setStage(2)
+        } catch (error) {
+            console.error("error")
+        }
     }
 
-    const [showingSettings, setShowSettings] = useState(false)
+    const [stage, s] = useState(0)
+    const setStage = n => {
+        console.log("Setting stage ", n)
+        s(n)
+    }
 
-    const [settings, dispatchSettings] = useReducer(settingsReducer, { intro: null, outro: null, transition: null, song: null })
-    const dispatchSet = type => e => dispatchSettings({ type, data: e.target.value })
+    const [settings, dispatchSettings] = useReducer(settingsReducer, { intro: '', outro: '', transition: '', song: '', voice: '' })
 
-    const [files, setFiles] = useState(null)
-
-    useEffect(() => {
-        apiFetch('/files')
-            .then(d => d.json())
-            .then(files => {
-                setFiles(files)
-            })
-    }, [])
+    const btns = (<div>
+        <button onClick={prevIndex} disabled={index === 0}>Prev</button>
+        <button onClick={() => setStage(1)}>Finish</button>
+        <button onClick={nextIndex} disabled={index >= images.length - 1}>Next</button>
+    </div>)
 
     return (
         <div>
-            {showingSettings ?
+            {stage === 2 &&
                 <div>
-                    <form>
-                        <div>
-                            <label>
-                                <div>Intro</div>
-                                <select value={settings.intro} onChange={dispatchSet("intro")}>
-                                    <option value="">None</option>
-                                    {files.videos.map(file =>
-                                        <option value={file}>{file}</option>
-                                    )}
-                                </select>
-                            </label>
-                        </div>
-                        <div>
-                            <label>
-                                <div>Transition</div>
-                                <select value={settings.transition} onChange={dispatchSet("transition")}>
-                                    <option value="">None</option>
-                                    {files.videos.map(file =>
-                                        <option value={file}>{file}</option>
-                                    )}
-                                </select>
-                            </label>
-                        </div>
-                        <div>
-                            <label>
-                                <div>Outro</div>
-                                <select value={settings.outro} onChange={dispatchSet("outro")}>
-                                    <option value="">None</option>
-                                    {files.videos.map(file =>
-                                        <option value={file}>{file}</option>
-                                    )}
-                                </select>
-                            </label>
-                        </div>
-                        <div>
-                            <label>
-                                <div>Song</div>
-                                <select value={settings.song} onChange={dispatchSet("song")}>
-                                    <option value="">None</option>
-                                    {files.songs.map(file =>
-                                        <option value={file}>{file}</option>
-                                    )}
-                                </select>
-                            </label>
-                        </div>
-
-                        <button onClick={submit}>Finish</button>
-                    </form>
-                    <button onClick={() => setShowSettings(false)}>Back</button>
+                    <p>Video is rendering. Go to the main page to download the video when the rendering is finished (takes around 10 mins)</p>
+                    <button onClick={() => setStage(1)}>Back</button>
                 </div>
-                :
+            }
+            {stage === 1 &&
                 <div>
-                    <FileImage
-                        key={img}
-                        src={img}
-                        blocks={drawBlocks[index]}
-                        enabledBlocks={thisEnabledBlocks}
-                        textBlocks={thisTextBlocks}
-                        setTextBlocks={setThisTextBlocks}
-                        setEnabledBlocks={setThisEnabledBlocks}
-                        alwaysShow={thisAlwaysShow}
-                        setAlwaysShow={setThisAlwaysShow}
-                    />
+                    <Settings settings={settings} onSubmit={onSubmit} dispatchSettings={dispatchSettings} />
+                    <button onClick={() => setStage(0)}>Back</button>
+                </div>
+            }
+            {stage === 0 &&
+                <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
+                    {btns}
 
-                    <button onClick={prevIndex} disabled={index === 0}>Back (l. arrow)</button>
-                    <button onClick={() => setShowSettings(true)}>Next</button>
-                    <button onClick={nextIndex} disabled={index >= images.length - 1}>Forw (r. arrow)</button>
+                    <div>
+                        <FileImage
+                            key={img}
+                            src={img}
+                            blocks={drawBlocks[index]}
+                            enabledBlocks={thisEnabledBlocks}
+                            textBlocks={thisTextBlocks}
+                            setTextBlocks={setThisTextBlocks}
+                            setEnabledBlocks={setThisEnabledBlocks}
+                            alwaysShow={thisAlwaysShow}
+                            setAlwaysShow={setThisAlwaysShow}
+                        />
+                    </div>
+
+                    {btns}
                 </div>
             }
         </div >
