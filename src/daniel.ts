@@ -1,58 +1,81 @@
 // This file is for the Oddcast API calls
 
-import fetch from 'node-fetch'
-import crypto = require('crypto')
+import fetch from "node-fetch"
+import crypto = require("crypto")
 
 function getMd5Hash(string: string) {
-	let md5Sum = crypto.createHash('md5')
+	let md5Sum = crypto.createHash("md5")
 	md5Sum.update(string)
-	return md5Sum.digest('hex')
+	return md5Sum.digest("hex")
 }
 
 // Reverse-engineering of the 'demo' api used on http://ttsdemo.com (max ~600 chars)
 // No known request-limit
 function getChecksum(text, engine = 4, language = 1, voice = 5, acc = 5883747) {
-	return getMd5Hash(`${engine}${language}${voice}` + text + '1' + 'mp3' + acc + 'uetivb9tb8108wfj')
+	return getMd5Hash(
+		`${engine}${language}${voice}` +
+			text +
+			"1" +
+			"mp3" +
+			acc +
+			"uetivb9tb8108wfj"
+	)
 }
 
 function getTextPromise(engine, language, voice, text, acc, checksum) {
-	return fetch(`http://cache-a.oddcast.com/tts/gen.php?EID=${engine}&LID=${language}&VID=${voice}&TXT=${text}&IS_UTF8=1&EXT=mp3&FNAME&ACC=${acc}&API&SESSION&CS=${checksum}&cache_flag=3`, {
-		headers: {
-			'Host': 'cache-a.oddcast.com',
-			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
-			'Accept': 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5',
-			'Accept-Language': 'sv-SE,sv;q=0.8,en-US;q=0.5,en;q=0.3',
-			'Range': 'bytes=0-',
-			'Referer': 'http://www.oddcast.com/ttsdemo/index.php',
-			'DNT': '1',
-			'Connection': 'keep-alive',
-			'Cookie': 'lastLoginURL=https%3A%2F%2Fvhss.oddcast.com%2Fadmin%2F%3F; y=esAHc9ANyahS30fiLAc00',
-		},
-	}).then(res => {
-		if (res.headers.get('Content-Type') === 'audio/mpeg') {
-			return res
-		} else {
-			console.log("Got Content-Type:", res.headers.get('Content-Type'))
-			console.error('An error ocurred with Daniel on:', text)
-			throw new Error("400")
+	return fetch(
+		`http://cache-a.oddcast.com/tts/gen.php?EID=${engine}&LID=${language}&VID=${voice}&TXT=${text}&IS_UTF8=1&EXT=mp3&FNAME&ACC=${acc}&API&SESSION&CS=${checksum}&cache_flag=3`,
+		{
+			headers: {
+				Host: "cache-a.oddcast.com",
+				"User-Agent":
+					"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0",
+				Accept:
+					"audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5",
+				"Accept-Language": "sv-SE,sv;q=0.8,en-US;q=0.5,en;q=0.3",
+				Range: "bytes=0-",
+				Referer: "http://www.oddcast.com/ttsdemo/index.php",
+				DNT: "1",
+				Connection: "keep-alive",
+				Cookie:
+					"lastLoginURL=https%3A%2F%2Fvhss.oddcast.com%2Fadmin%2F%3F; y=esAHc9ANyahS30fiLAc00",
+			},
 		}
-	}).catch(err => {
-		console.error("Daniel: Request failed")
-		throw err
-	})
+	)
+		.then((res) => {
+			if (res.headers.get("Content-Type") === "audio/mpeg") {
+				return res
+			} else {
+				console.log(
+					"Got Content-Type:",
+					res.headers.get("Content-Type")
+				)
+				console.error("An error ocurred with Daniel on:", text)
+				throw new Error("400")
+			}
+		})
+		.catch((err) => {
+			console.error("Daniel: Request failed")
+			throw err
+		})
 }
 
 // Make call will return a request with the mp3 file
 // "text" cannot include some characters, like [><\n]
 // Usually takes between 2-5 seconds
-export async function makeCall(text: string, engine = 4, language = 1, voice = 5) {
+export async function makeCall(
+	text: string,
+	engine = 4,
+	language = 1,
+	voice = 5
+) {
 	text = text
-		.replace(/&/g, ' and ') // '&' doesn't work for Daniel, he says &amp instead
-		.replace(/[<>]/g, '')   // < and > makes the request fail
+		.replace(/&/g, " and ") // '&' doesn't work for Daniel, he says &amp instead
+		.replace(/[<>]/g, "") // < and > makes the request fail
 		// .replace('\n', '')
 		.split("\n")
-		.map(line => line.trim())
-		.map(line => line[0].toUpperCase() + line.slice(1) + " (")
+		.map((line) => line.trim())
+		.map((line) => line[0].toUpperCase() + line.slice(1) + " (")
 		.join("\n")
 
 	const newtext = encodeURIComponent(text)
@@ -64,7 +87,14 @@ export async function makeCall(text: string, engine = 4, language = 1, voice = 5
 		tries++
 		try {
 			// Timout at 5 seconds
-			let p = getTextPromise(engine, language, voice, newtext, acc, checksum)
+			let p = getTextPromise(
+				engine,
+				language,
+				voice,
+				newtext,
+				acc,
+				checksum
+			)
 			let t = await timeoutPromise(5000, p)
 			return t
 		} catch (err) {
@@ -72,8 +102,12 @@ export async function makeCall(text: string, engine = 4, language = 1, voice = 5
 				throw err
 			}
 			let retrytime = 1000
-			console.error(`Daniel: Request failed. Retrying again in ${retrytime / 1000} seconds...`)
-			await new Promise(r => setTimeout(r, retrytime)) // Wait
+			console.error(
+				`Daniel: Request failed. Retrying again in ${
+					retrytime / 1000
+				} seconds...`
+			)
+			await new Promise((r) => setTimeout(r, retrytime)) // Wait
 		}
 	}
 
@@ -85,16 +119,16 @@ function timeoutPromise(ms, promise) {
 	return new Promise((resolve, reject) => {
 		const timeoutId = setTimeout(() => {
 			reject(new Error("promise timeout"))
-		}, ms);
+		}, ms)
 		promise.then(
 			(res) => {
-				clearTimeout(timeoutId);
-				resolve(res);
+				clearTimeout(timeoutId)
+				resolve(res)
 			},
 			(err) => {
-				clearTimeout(timeoutId);
-				reject(err);
+				clearTimeout(timeoutId)
+				reject(err)
 			}
-		);
+		)
 	})
 }

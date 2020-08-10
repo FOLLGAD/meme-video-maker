@@ -1,23 +1,26 @@
 // This file is for the tts calls
 
-import fs = require('fs')
-import { makeCall } from './daniel'
-import { spawn } from 'child_process'
-import tmp = require('tmp')
+import fs = require("fs")
+import { makeCall } from "./daniel"
+import { spawn } from "child_process"
+import tmp = require("tmp")
 
-import textToSpeech = require('@google-cloud/text-to-speech')
+import textToSpeech = require("@google-cloud/text-to-speech")
 const client = new textToSpeech.TextToSpeechClient({})
 
 const defaultVoiceSettings = {
 	speakingRate: 0.98,
-	"languageCode": "en-US",
-	"voiceName": "en-US-Wavenet-D",
+	languageCode: "en-US",
+	voiceName: "en-US-Wavenet-D",
 	pitch: -2.0,
 }
 
-export function synthSpeech({ text, voice }: { text: string, voice: string }) {
-	if (!/[\d\w]/.test(text)) { // If no letter or number is in text, don't produce it
-		return new Promise((_, rej) => rej("Warning: TTS for current frame is empty"))
+export function synthSpeech({ text, voice }: { text: string; voice: string }) {
+	if (!/[\d\w]/.test(text)) {
+		// If no letter or number is in text, don't produce it
+		return new Promise((_, rej) =>
+			rej("Warning: TTS for current frame is empty")
+		)
 	}
 
 	switch (voice) {
@@ -41,7 +44,8 @@ export function synthSpeech({ text, voice }: { text: string, voice: string }) {
 				speakingRate: 0.96,
 			})
 
-		case "google-us": default:
+		case "google-us":
+		default:
 			// Fallthrough to default
 			return module.exports.synthGoogle(text, {
 				speakingRate: 0.98,
@@ -53,24 +57,24 @@ export function synthSpeech({ text, voice }: { text: string, voice: string }) {
 }
 
 export function linuxTTSToFile(text) {
-	return new Promise(resolve => {
-		let file = tmp.fileSync({ postfix: '.mp3' })
+	return new Promise((resolve) => {
+		let file = tmp.fileSync({ postfix: ".mp3" })
 		let filepath = file.name
 
-		let proc = spawn('espeak', ['-w', filepath, text])
-		proc.on('exit', () => {
+		let proc = spawn("espeak", ["-w", filepath, text])
+		proc.on("exit", () => {
 			resolve(filepath)
 		})
 	})
 }
 
 export function macTTSToFile(text) {
-	return new Promise(resolve => {
-		let file = tmp.fileSync({ postfix: '.aiff' })
+	return new Promise((resolve) => {
+		let file = tmp.fileSync({ postfix: ".aiff" })
 		let filepath = file.name
 
-		let proc = spawn('say', ['-o', filepath, '-v', 'Daniel', text])
-		proc.on('exit', () => {
+		let proc = spawn("say", ["-o", filepath, "-v", "Daniel", text])
+		proc.on("exit", () => {
 			resolve(filepath)
 		})
 	})
@@ -80,18 +84,26 @@ export function synthGoogle(text, voiceSettings = defaultVoiceSettings) {
 	text = text
 		.replace(/[><]/g, "") // Remove greater/less than
 		.split("\n")
-		.map(line => line.trim())
-		.map(line => line + ".")
+		.map((line) => line.trim())
+		.map((line) => line + ".")
 		.join("\n")
 
 	const request: textToSpeech.protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
 		input: { text: text },
-		voice: { languageCode: voiceSettings.languageCode, ssmlGender: "MALE", name: voiceSettings.voiceName },
-		audioConfig: { audioEncoding: 'MP3', speakingRate: voiceSettings.speakingRate, pitch: voiceSettings.pitch },
+		voice: {
+			languageCode: voiceSettings.languageCode,
+			ssmlGender: "MALE",
+			name: voiceSettings.voiceName,
+		},
+		audioConfig: {
+			audioEncoding: "MP3",
+			speakingRate: voiceSettings.speakingRate,
+			pitch: voiceSettings.pitch,
+		},
 	}
 
 	return new Promise((res, rej) => {
-		let file = tmp.fileSync({ postfix: '.mp3' })
+		let file = tmp.fileSync({ postfix: ".mp3" })
 		let filepath = file.name
 
 		client.synthesizeSpeech(request, (err, response) => {
@@ -103,8 +115,9 @@ export function synthGoogle(text, voiceSettings = defaultVoiceSettings) {
 			}
 
 			// Write the binary audio content to a local file
-			fs.writeFile(filepath, response.audioContent, 'binary',
-				err => err ? rej(err) : res(filepath))
+			fs.writeFile(filepath, response.audioContent, "binary", (err) =>
+				err ? rej(err) : res(filepath)
+			)
 		})
 	})
 }
@@ -113,8 +126,8 @@ export function synthOddcast(text) {
 	return new Promise((resolve, reject) => {
 		makeCall(text)
 			.then((res: any): Buffer => res.buffer())
-			.then(buffer => {
-				let file = tmp.fileSync({ postfix: '.mp3' })
+			.then((buffer) => {
+				let file = tmp.fileSync({ postfix: ".mp3" })
 				let filepath = file.name
 
 				fs.writeFileSync(filepath, buffer)

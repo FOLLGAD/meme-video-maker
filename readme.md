@@ -34,7 +34,7 @@ Build the client
 ```
 $ npm run client-build
 
-# Now client/build/static contains a static build of the site
+# Now client/build contains a static build of the site
 ```
 
-Serve the static directory on netlify or any web server
+Serve the builded directory on netlify or any web server

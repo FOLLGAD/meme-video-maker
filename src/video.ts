@@ -1,180 +1,207 @@
 // TODO: Could also use gm for image manipulation: https://github.com/aheckmann/gm
-import * as Canvas from 'canvas'
-import * as ffmpeg from 'fluent-ffmpeg'
-import { join } from 'path'
-import { dir, file } from 'tmp-promise'
-import { synthSpeech } from './synth'
+import * as Canvas from "canvas"
+import * as ffmpeg from "fluent-ffmpeg"
+import { join } from "path"
+import { dir, file } from "tmp-promise"
+import { synthSpeech } from "./synth"
 
 // Ffprobe
 // Usually takes ~40ms
 const probe = function (path) {
-    return new Promise((res, rej) => {
-        ffmpeg.ffprobe(path, (err, data) => {
-            if (err) rej(err);
-            else res(data);
-        })
-    })
+	return new Promise((res, rej) => {
+		ffmpeg.ffprobe(path, (err, data) => {
+			if (err) rej(err)
+			else res(data)
+		})
+	})
 }
 
 export interface Rec {
-    x: number;
-    y: number;
-    height: number;
-    width: number;
+	x: number
+	y: number
+	height: number
+	width: number
 }
 
 export interface ImageReader {
-    alwaysShow: [Rec];
-    blocks: { block: Rec, text: string }[];
+	alwaysShow: [Rec]
+	blocks: { block: Rec; text: string }[]
 }
 
 interface Settings {
-    transition?: string,
-    intro?: string,
-    outro?: string,
-    song?: string,
-    voice?: string,
+	transition?: string
+	intro?: string
+	outro?: string
+	song?: string
+	voice?: string
 }
 
 export const filesPath = join(__dirname, "../files")
 
 function intersperse(d: any[], sep: any): any[] {
-    return d.reduce((acc, val, i) => i === 0 ? [...acc, val] : [...acc, sep, val], [])
+	return d.reduce(
+		(acc, val, i) => (i === 0 ? [...acc, val] : [...acc, sep, val]),
+		[]
+	)
 }
 
-async function parallell(imageReaders: ImageReader[], images: string[], settings: Settings) {
-    const promises = imageReaders.map((_, i) => {
-        return makeImageThing(imageReaders[i], images[i], settings)
-    })
-    return await Promise.all(promises)
+async function parallell(
+	imageReaders: ImageReader[],
+	images: string[],
+	settings: Settings
+) {
+	const promises = imageReaders.map((_, i) => {
+		return makeImageThing(imageReaders[i], images[i], settings)
+	})
+	return await Promise.all(promises)
 }
 
-async function serial(imageReaders: ImageReader[], images: string[], settings: Settings) {
-    let arr: (string | null)[] = []
-    for (let i = 0; i < imageReaders.length; i++) {
-        const result = await makeImageThing(imageReaders[i], images[i], settings)
-        arr.push(result)
-    }
-    return arr
+async function serial(
+	imageReaders: ImageReader[],
+	images: string[],
+	settings: Settings
+) {
+	let arr: (string | null)[] = []
+	for (let i = 0; i < imageReaders.length; i++) {
+		const result = await makeImageThing(
+			imageReaders[i],
+			images[i],
+			settings
+		)
+		arr.push(result)
+	}
+	return arr
 }
 
-export async function makeVids(imageReaders: ImageReader[], images: string[], settings: Settings): Promise<string> {
-    let vids = await serial(imageReaders, images, settings)
+export async function makeVids(
+	imageReaders: ImageReader[],
+	images: string[],
+	settings: Settings
+): Promise<string> {
+	let vids = await serial(imageReaders, images, settings)
 
-    if (settings.transition) vids = intersperse(vids, settings.transition)
+	if (settings.transition) vids = intersperse(vids, settings.transition)
 
-    if (settings.intro) vids.unshift(settings.intro)
-    if (settings.outro) vids.push(settings.outro)
+	if (settings.intro) vids.unshift(settings.intro)
+	if (settings.outro) vids.push(settings.outro)
 
-    const out = await file({ postfix: '.mp4' })
+	const out = await file({ postfix: ".mp4" })
 
-    await simpleConcat(vids.filter(v => v), out.path)
+	await simpleConcat(
+		vids.filter((v) => v),
+		out.path
+	)
 
-    if (settings.song) {
-        const songout = await file({ postfix: '.mp4' })
+	if (settings.song) {
+		const songout = await file({ postfix: ".mp4" })
 
-        await combineVideoAudio(out.path, settings.song!, songout.path)
+		await combineVideoAudio(out.path, settings.song!, songout.path)
 
-        return songout.path
-    } else {
-        return out.path
-    }
+		return songout.path
+	} else {
+		return out.path
+	}
 }
 
-async function makeImageThing(imageReader: ImageReader, image: string, settings: Settings): Promise<string | null> {
-    if (imageReader.blocks.length === 0) {
-        return null
-    }
+async function makeImageThing(
+	imageReader: ImageReader,
+	image: string,
+	settings: Settings
+): Promise<string | null> {
+	if (imageReader.blocks.length === 0) {
+		return null
+	}
 
-    const blockingColor = "#000000"
+	const blockingColor = "#000000"
 
-    const loadedImage = await Canvas.loadImage(image)
-    const { width, height } = loadedImage
-    const imageCanvas = await Canvas.createCanvas(width, height)
-    const imageCanvCtx = imageCanvas.getContext('2d')
+	const loadedImage = await Canvas.loadImage(image)
+	const { width, height } = loadedImage
+	const imageCanvas = await Canvas.createCanvas(width, height)
+	const imageCanvCtx = imageCanvas.getContext("2d")
 
-    // Create the canvas that will cover the image
-    const blockingCanvas = await Canvas.createCanvas(width, height)
-    // ...and fill it black
-    const ctx = blockingCanvas.getContext("2d")
-    ctx.fillStyle = blockingColor
-    ctx.fillRect(0, 0, width, height)
+	// Create the canvas that will cover the image
+	const blockingCanvas = await Canvas.createCanvas(width, height)
+	// ...and fill it black
+	const ctx = blockingCanvas.getContext("2d")
+	ctx.fillStyle = blockingColor
+	ctx.fillRect(0, 0, width, height)
 
-    // Always show the alwaysShows area of the screen
-    imageReader.alwaysShow && imageReader.alwaysShow.forEach(d => {
-        ctx.clearRect(d.x, d.y, d.width, d.height)
-    })
+	// Always show the alwaysShows area of the screen
+	imageReader.alwaysShow &&
+		imageReader.alwaysShow.forEach((d) => {
+			ctx.clearRect(d.x, d.y, d.width, d.height)
+		})
 
-    let vids: string[] = []
+	let vids: string[] = []
 
-    for (let i = 0; i < imageReader.blocks.length; i++) {
-        const readRect = imageReader.blocks[i]
+	for (let i = 0; i < imageReader.blocks.length; i++) {
+		const readRect = imageReader.blocks[i]
 
-        // Clear text
-        ctx.clearRect(0, 0, width, readRect.block.y + readRect.block.height)
+		// Clear text
+		ctx.clearRect(0, 0, width, readRect.block.y + readRect.block.height)
 
-        const speechFile = await synthSpeech({ text: readRect.text, voice: settings.voice || "daniel" })
+		const speechFile = await synthSpeech({
+			text: readRect.text,
+			voice: settings.voice || "daniel",
+		})
 
-        const f: { path: string } = await new Promise(async (res, rej) => {
-            const f = await file({ postfix: '.mp4' })
+		const f: { path: string } = await new Promise(async (res, rej) => {
+			const f = await file({ postfix: ".mp4" })
 
-            imageCanvCtx.clearRect(0, 0, width, height)
-            // Draw source
-            imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
-            if (i < imageReader.blocks.length - 1) {
-                // Draw blockage
-                imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
-            }
+			imageCanvCtx.clearRect(0, 0, width, height)
+			// Draw source
+			imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+			if (i < imageReader.blocks.length - 1) {
+				// Draw blockage
+				imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+			}
 
-            ffmpeg()
-                .input(imageCanvas.createPNGStream())
-                .input(image)
-                .input(speechFile)
-                .size('1920x1080')
-                .aspect('16:9')
-                .autopad()
-                .audioCodec('aac')
-                .outputOptions([
-                    "-pix_fmt yuv420p",
-                ])
-                .audioFrequency(24000)
-                .audioChannels(2)
-                .fps(25)
-                .videoCodec('libx264')
-                .save(f.path)
-                .on('error', rej)
-                .on('end', () => res(f))
-        })
+			ffmpeg()
+				.input(imageCanvas.createPNGStream())
+				.input(image)
+				.input(speechFile)
+				.size("1920x1080")
+				.aspect("16:9")
+				.autopad()
+				.audioCodec("aac")
+				.outputOptions(["-pix_fmt yuv420p"])
+				.audioFrequency(24000)
+				.audioChannels(2)
+				.fps(25)
+				.videoCodec("libx264")
+				.save(f.path)
+				.on("error", rej)
+				.on("end", () => res(f))
+		})
 
-        vids.push(f.path)
-    }
+		vids.push(f.path)
+	}
 
-    const out = await file({ postfix: '.mp4' })
-    await simpleConcat(vids, out.path)
+	const out = await file({ postfix: ".mp4" })
+	await simpleConcat(vids, out.path)
 
-    return out.path
+	return out.path
 }
 
 function simpleConcat(videoPaths, outPath) {
-    return new Promise(async (res, rej) => {
-        let tempdir = await dir()
+	return new Promise(async (res, rej) => {
+		let tempdir = await dir()
 
-        let f = ffmpeg()
-        videoPaths.forEach(v => {
-            f.input(v)
-        })
-        f
-            .on('end', () => {
-                res()
-                tempdir.cleanup()
-            })
-            .on('error', err => {
-                console.error(err)
-                rej(err)
-            })
-            // @ts-ignore
-            .mergeToFile(outPath, tempdir.path)
-    })
+		let f = ffmpeg()
+		videoPaths.forEach((v) => {
+			f.input(v)
+		})
+		f.on("end", () => {
+			res()
+			tempdir.cleanup()
+		})
+			.on("error", (err) => {
+				console.error(err)
+				rej(err)
+			})
+			// @ts-ignore
+			.mergeToFile(outPath, tempdir.path)
+	})
 }
 
 // TODO: scroll long images with video
@@ -183,31 +210,28 @@ function simpleConcat(videoPaths, outPath) {
     Overlays audio over a video clip, repeating it ad inifinitum.
 */
 function combineVideoAudio(videoPath, audioPath, outPath) {
-    return new Promise(async (res, rej) => {
-        let videoInfo: any = await probe(videoPath)
+	return new Promise(async (res, rej) => {
+		let videoInfo: any = await probe(videoPath)
 
-        ffmpeg(videoPath)
-            .videoCodec('libx264')
-            .input(audioPath)
-            .audioCodec('aac')
-            .inputOptions([
-                '-stream_loop -1', // Repeats audio until it hits the previously set duration [https://stackoverflow.com/a/34280687/6912118]
-            ])
-            .duration(videoInfo.format.duration) // Run for the duration of the video
-            .complexFilter(['[0:a][1:a] amerge=inputs=2 [a]'])
-            .fpsOutput(25)
-            .outputOptions([
-                '-map 0:v',
-                '-map [a]',
-            ])
-            .audioChannels(1)
-            .on('end', () => {
-                res()
-            })
-            .on('error', err => {
-                console.error(err)
-                rej()
-            })
-            .save(outPath)
-    })
+		ffmpeg(videoPath)
+			.videoCodec("libx264")
+			.input(audioPath)
+			.audioCodec("aac")
+			.inputOptions([
+				"-stream_loop -1", // Repeats audio until it hits the previously set duration [https://stackoverflow.com/a/34280687/6912118]
+			])
+			.duration(videoInfo.format.duration) // Run for the duration of the video
+			.complexFilter(["[0:a][1:a] amerge=inputs=2 [a]"])
+			.fpsOutput(25)
+			.outputOptions(["-map 0:v", "-map [a]"])
+			.audioChannels(1)
+			.on("end", () => {
+				res()
+			})
+			.on("error", (err) => {
+				console.error(err)
+				rej()
+			})
+			.save(outPath)
+	})
 }
