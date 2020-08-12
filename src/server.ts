@@ -92,6 +92,8 @@ const generateName = () => {
 	)
 }
 
+const logDate = () => new Date().toLocaleString()
+
 async function makeVid(rawSet, enabled, images) {
 	const settings = {
 		intro: rawSet.intro ? await getFile(rawSet.intro) : undefined,
@@ -103,12 +105,14 @@ async function makeVid(rawSet, enabled, images) {
 		voice: rawSet.voice,
 	}
 
+	console.log(logDate(), "Making video...")
+
 	return await makeVids(
 		enabled,
 		images.map((i) => i.image),
 		settings
 	).then((vid) => {
-		console.log("vid rendered at ", vid)
+		console.log(logDate(), "Video rendered on ", vid)
 		const now = new Date()
 
 		let expires = new Date()
