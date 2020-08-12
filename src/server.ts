@@ -3,7 +3,7 @@ import { ListObjectsOutput } from "aws-sdk/clients/s3"
 import { createReadStream, existsSync, writeFileSync } from "fs"
 import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
-import { ImageReader, makeVids, normalize } from "./video"
+import { ImageReader, makeVids, normalizeAudio, normalizeVideo } from "./video"
 import { readImages } from "./vision"
 import Koa = require("koa")
 import Router = require("koa-router")
@@ -178,18 +178,24 @@ router
 		try {
 			const f = await file()
 
-			await normalize(path, f.path)
+			if (name.substr(-4) === ".mp3") {
+				await normalizeAudio(path, f.path)
+			} else {
+				await normalizeVideo(path, f.path)
+			}
 
 			await new Promise((res, rej) =>
 				s3.upload(
 					{
 						Bucket: FilesBucket,
-						Body: createReadStream(path),
+						Body: createReadStream(f.path),
 						Key: name,
 					},
 					(err, data) => (err ? rej(err) : res(data))
 				)
 			)
+			f.cleanup()
+
 			console.log("Uploaded new file with name", name)
 
 			ctx.body = {
