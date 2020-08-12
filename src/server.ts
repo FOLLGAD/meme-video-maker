@@ -77,11 +77,11 @@ async function getFile(s3_key: string): Promise<string> {
 const generateName = () => {
 	const now = new Date()
 	const num = parseInt(
-		(now.getFullYear() - 2000).toString().padStart(2, "0") +
-			now.getMonth().toString().padStart(2, "0") +
-			now.getDate().toString().padStart(2, "0") +
-			now.getHours().toString().padStart(2, "0") +
-			now.getMinutes().toString().padStart(2, "0")
+		(now.getUTCFullYear() - 2000).toString().padStart(2, "0") +
+			now.getUTCMonth().toString().padStart(2, "0") +
+			now.getUTCDate().toString().padStart(2, "0") +
+			now.getUTCHours().toString().padStart(2, "0") +
+			now.getUTCMinutes().toString().padStart(2, "0")
 	)
 	return (
 		"4chan-" +
