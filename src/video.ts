@@ -235,3 +235,18 @@ function combineVideoAudio(videoPath, audioPath, outPath) {
 			.save(outPath)
 	})
 }
+
+export function normalize(videoPath: string, outPath: string) {
+	return new Promise((res, rej) =>
+		ffmpeg(videoPath)
+			.audioCodec("aac")
+			.outputOptions(["-pix_fmt yuv420p"])
+			.audioFrequency(24000)
+			.audioChannels(2)
+			.fps(25)
+			.videoCodec("libx264")
+			.save(outPath)
+			.on("end", res)
+			.on("error", rej)
+	)
+}
