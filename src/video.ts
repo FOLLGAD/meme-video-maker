@@ -79,15 +79,13 @@ export async function makeVids(
 	settings: Settings
 ): Promise<string> {
 	let vidsMid = await serial(imageReaders, images, settings)
+	vidsMid = vidsMid.filter((v) => v)
 
 	if (settings.transition) vidsMid = intersperse(vidsMid, settings.transition)
 
 	const out = await file({ postfix: ".mp4" })
 
-	await simpleConcat(
-		vidsMid.filter((v) => v),
-		out.path
-	)
+	await simpleConcat(vidsMid, out.path)
 
 	let vidsFull = [out.path]
 
@@ -105,7 +103,7 @@ export async function makeVids(
 	if (settings.song) {
 		const songout = await file({ postfix: ".mp4" })
 
-		await combineVideoAudio(out.path, settings.song!, songout.path)
+		await combineVideoAudio(vidPath.path, settings.song!, songout.path)
 		vidPath.cleanup()
 
 		return songout.path
