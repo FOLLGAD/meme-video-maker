@@ -78,6 +78,10 @@ export async function makeCall(
 		.map((line) => line[0].toUpperCase() + line.slice(1) + " (")
 		.join("\n")
 
+	if (text.length === 0) {
+		throw new Error("Daniel: Text is zero-length")
+	}
+
 	const newtext = encodeURIComponent(text)
 	const acc = 5883747
 	const checksum = getChecksum(text, engine, language, voice, acc)
