@@ -255,15 +255,3 @@ export function normalizeVideo(videoPath: string, outPath: string) {
 			.on("error", rej)
 	)
 }
-
-export function normalizeAudio(videoPath: string, outPath: string) {
-	return new Promise((res, rej) =>
-		ffmpeg(videoPath)
-			.audioCodec("aac")
-			.audioFrequency(24000)
-			.audioChannels(2)
-			.save(outPath)
-			.on("end", res)
-			.on("error", rej)
-	)
-}

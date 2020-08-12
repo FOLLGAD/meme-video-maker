@@ -3,7 +3,7 @@ import { ListObjectsOutput } from "aws-sdk/clients/s3"
 import { createReadStream, existsSync, writeFileSync } from "fs"
 import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
-import { ImageReader, makeVids, normalizeAudio, normalizeVideo } from "./video"
+import { ImageReader, makeVids, normalizeVideo } from "./video"
 import { readImages } from "./vision"
 import Koa = require("koa")
 import Router = require("koa-router")
@@ -177,20 +177,22 @@ router
 
 		try {
 			const ext = name.substr(-4)
-
 			const f = await file({ postfix: ext })
 
+			let newPath = f.path
 			if (ext === ".mp3") {
-				await normalizeAudio(path, f.path)
+				// Do nothing, audio don't need preprocessing (??? citation needed)
+				// Also, ffmpeg needs "libmp3lame" support for mp3 output for some darn reason
+				newPath = path
 			} else {
-				await normalizeVideo(path, f.path)
+				await normalizeVideo(path, newPath)
 			}
 
 			await new Promise((res, rej) =>
 				s3.upload(
 					{
 						Bucket: FilesBucket,
-						Body: createReadStream(f.path),
+						Body: createReadStream(newPath),
 						Key: name,
 					},
 					(err, data) => (err ? rej(err) : res(data))
@@ -205,6 +207,7 @@ router
 			}
 		} catch (err) {
 			console.error(err)
+
 			ctx.status = 400
 
 			ctx.body = {
