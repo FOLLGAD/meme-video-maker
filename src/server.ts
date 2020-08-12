@@ -176,9 +176,11 @@ router
 		const { path, name } = files!.file
 
 		try {
-			const f = await file()
+			const ext = name.substr(-4)
 
-			if (name.substr(-4) === ".mp3") {
+			const f = await file({ postfix: ext })
+
+			if (ext === ".mp3") {
 				await normalizeAudio(path, f.path)
 			} else {
 				await normalizeVideo(path, f.path)

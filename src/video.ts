@@ -239,7 +239,6 @@ function combineVideoAudio(videoPath, audioPath, outPath) {
 export function normalizeVideo(videoPath: string, outPath: string) {
 	return new Promise((res, rej) =>
 		ffmpeg(videoPath)
-			.inputFormat("mp4")
 			.audioCodec("aac")
 			.outputOptions(["-pix_fmt yuv420p"])
 			.audioFrequency(24000)
@@ -255,7 +254,6 @@ export function normalizeVideo(videoPath: string, outPath: string) {
 export function normalizeAudio(videoPath: string, outPath: string) {
 	return new Promise((res, rej) =>
 		ffmpeg(videoPath)
-			.inputFormat("mp3")
 			.audioCodec("aac")
 			.audioFrequency(24000)
 			.audioChannels(2)
