@@ -15,7 +15,13 @@ const defaultVoiceSettings = {
 	pitch: -2.0,
 }
 
-export function synthSpeech({ text, voice }: { text: string; voice: string }) {
+export function synthSpeech({
+	text,
+	voice,
+}: {
+	text: string
+	voice: string
+}): Promise<string> {
 	if (!/[\d\w]/.test(text)) {
 		// If no letter or number is in text, don't produce it
 		return new Promise((_, rej) =>
@@ -122,7 +128,7 @@ export function synthGoogle(text, voiceSettings = defaultVoiceSettings) {
 	})
 }
 
-export function synthOddcast(text) {
+export function synthOddcast(text): Promise<string> {
 	return new Promise((resolve, reject) => {
 		makeCall(text)
 			.then((res: any): Buffer => res.buffer())
