@@ -140,41 +140,46 @@ async function makeImageThing(
 		// Clear text
 		ctx.clearRect(0, 0, width, readRect.block.y + readRect.block.height)
 
-		const speechFile = await synthSpeech({
-			text: readRect.text,
-			voice: settings.voice || "daniel",
-		})
+		try {
+			const speechFile = await synthSpeech({
+				text: readRect.text,
+				voice: settings.voice || "daniel",
+			})
 
-		const f: { path: string } = await new Promise(async (res, rej) => {
-			const f = await file({ postfix: ".mp4" })
+			const f: { path: string } = await new Promise(async (res, rej) => {
+				const f = await file({ postfix: ".mp4" })
 
-			imageCanvCtx.clearRect(0, 0, width, height)
-			// Draw source
-			imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
-			if (i < imageReader.blocks.length - 1) {
-				// Draw blockage
-				imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
-			}
+				imageCanvCtx.clearRect(0, 0, width, height)
+				// Draw source
+				imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+				if (i < imageReader.blocks.length - 1) {
+					// Draw blockage
+					imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+				}
 
-			ffmpeg()
-				.input(imageCanvas.createPNGStream())
-				.input(image)
-				.input(speechFile)
-				.size("1920x1080")
-				.aspect("16:9")
-				.autopad()
-				.audioCodec("aac")
-				.outputOptions(["-pix_fmt yuv420p"])
-				.audioFrequency(24000)
-				.audioChannels(2)
-				.fps(25)
-				.videoCodec("libx264")
-				.save(f.path)
-				.on("error", rej)
-				.on("end", () => res(f))
-		})
+				ffmpeg()
+					.input(imageCanvas.createPNGStream())
+					.input(image)
+					.input(speechFile)
+					.size("1920x1080")
+					.aspect("16:9")
+					.autopad()
+					.audioCodec("aac")
+					.outputOptions(["-pix_fmt yuv420p"])
+					.audioFrequency(24000)
+					.audioChannels(2)
+					.fps(25)
+					.videoCodec("libx264")
+					.save(f.path)
+					.on("error", rej)
+					.on("end", () => res(f))
+			})
 
-		vids.push(f.path)
+			vids.push(f.path)
+		} catch (err) {
+			console.error(err)
+			// scene couldn't be rendered, so it won't be pushed to the video-list
+		}
 	}
 
 	const out = await file({ postfix: ".mp4" })
