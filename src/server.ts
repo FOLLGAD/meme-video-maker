@@ -204,6 +204,7 @@ router
 				success: true,
 			}
 		} catch (err) {
+			console.error(err)
 			ctx.status = 400
 
 			ctx.body = {
