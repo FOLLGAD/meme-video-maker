@@ -1,37 +1,50 @@
-import React, { useRef } from 'react';
-import apiFetch from './apiFetch'
+import React, { useRef, useState } from "react"
+import apiFetch from "./apiFetch"
 
 export default function Form() {
-    const filesInp = useRef(null)
+	const filesInp = useRef(null)
+	const [loading, setLoading] = useState(false)
+	const [error, setError] = useState(null)
 
-    const submit = event => {
-        event.preventDefault()
+	const submit = (event) => {
+		event.preventDefault()
 
-        const fd = new FormData()
-        const file = filesInp.current.files[0]
+		if (!filesInp.current.value) return // Early exit if no file
 
-        fd.append("file", file)
+		setLoading(true)
 
-        apiFetch('/upload-file', {
-            body: fd,
-            method: 'POST',
-        }).then(res => {
-            if (res.ok) {
-                filesInp.current.value = null
-            }
-        })
-    }
+		const fd = new FormData()
+		const file = filesInp.current.files[0]
 
-    return (
-        <div>
-            <form id="formed">
-                <div>
-                    <input ref={filesInp} accept=".mp4,.mp3" type="file" required />
-                </div>
-                <div style={{ paddingTop: 10 }}>
-                    <input type="submit" value="Upload" onClick={submit} />
-                </div>
-            </form>
-        </div>
-    )
+		fd.append("file", file)
+
+		apiFetch("/upload-file", {
+			body: fd,
+			method: "POST",
+		}).then((res) => {
+			setLoading(false)
+			if (res.ok) {
+				setError(null)
+				filesInp.current.value = null
+			} else {
+				setError("Something went wrong. Try again with another format.")
+			}
+		})
+	}
+
+	return (
+		<div>
+			<form id="formed">
+				<div>{error ? error : ""}</div>
+				<div>
+					<input ref={filesInp} accept=".mp4,.mp3" type="file" />
+				</div>
+				<div style={{ paddingTop: 10 }}>
+					<button type="submit" onClick={submit}>
+						{loading ? "Loading..." : "Upload"}
+					</button>
+				</div>
+			</form>
+		</div>
+	)
 }
