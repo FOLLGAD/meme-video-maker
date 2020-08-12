@@ -78,24 +78,35 @@ export async function makeVids(
 	images: string[],
 	settings: Settings
 ): Promise<string> {
-	let vids = await serial(imageReaders, images, settings)
+	let vidsMid = await serial(imageReaders, images, settings)
 
-	if (settings.transition) vids = intersperse(vids, settings.transition)
-
-	if (settings.intro) vids.unshift(settings.intro)
-	if (settings.outro) vids.push(settings.outro)
+	if (settings.transition) vidsMid = intersperse(vidsMid, settings.transition)
 
 	const out = await file({ postfix: ".mp4" })
 
 	await simpleConcat(
-		vids.filter((v) => v),
+		vidsMid.filter((v) => v),
 		out.path
 	)
+
+	let vidsFull = [out.path]
+
+	if (settings.intro) vidsFull.unshift(settings.intro)
+	if (settings.outro) vidsFull.push(settings.outro)
+
+	let vidPath = out
+	if (vidsFull.length > 1) {
+		// If has outro or intro
+		vidPath = await file({ postfix: ".mp4" })
+		await simpleConcat(vidsFull, vidPath.path)
+		out.cleanup()
+	}
 
 	if (settings.song) {
 		const songout = await file({ postfix: ".mp4" })
 
 		await combineVideoAudio(out.path, settings.song!, songout.path)
+		vidPath.cleanup()
 
 		return songout.path
 	} else {
