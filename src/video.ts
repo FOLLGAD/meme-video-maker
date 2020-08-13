@@ -228,6 +228,7 @@ function simpleConcat(videoPaths: string[], outPath) {
 			f.input(v)
 		})
 		f.outputOptions(["-preset veryfast"])
+			.outputOptions(["-threads 1"])
 			.on("end", () => {
 				res()
 				tempdir.cleanup()
