@@ -96,6 +96,16 @@ export async function makeVids(
 
 	let vidsFull = [out.path]
 
+	if (settings.song) {
+		const songout = await file({ postfix: ".mp4" })
+
+		console.log("Adding song")
+
+		await combineVideoAudio(out.path, settings.song!, songout.path)
+
+		vidsFull = [songout.path]
+	}
+
 	if (settings.intro) vidsFull.unshift(settings.intro)
 	if (settings.outro) vidsFull.push(settings.outro)
 
@@ -108,18 +118,7 @@ export async function makeVids(
 		out.cleanup()
 	}
 
-	if (settings.song) {
-		const songout = await file({ postfix: ".mp4" })
-
-		console.log("Adding song")
-
-		await combineVideoAudio(vidPath.path, settings.song!, songout.path)
-		vidPath.cleanup()
-
-		return songout.path
-	} else {
-		return out.path
-	}
+	return out.path
 }
 
 async function makeImageThing(

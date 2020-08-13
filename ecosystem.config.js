@@ -5,7 +5,7 @@ module.exports = {
 		production: {
 			key: "~/.ssh/redditors-expansion.pem",
 			user: "ec2-user",
-			host: "ec2-18-184-1-136.eu-central-1.compute.amazonaws.com",
+			host: "ec2-18-197-134-112.eu-central-1.compute.amazonaws.com",
 			ref: "origin/master",
 			repo: "git@github.com:FOLLGAD/4chan-reader.git",
 			path: "/home/ec2-user/4chan",
