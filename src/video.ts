@@ -73,13 +73,17 @@ async function serial(
 	return arr
 }
 
+function notEmpty<TValue>(value: TValue | null): value is TValue {
+	return value !== null
+}
+
 export async function makeVids(
 	imageReaders: ImageReader[],
 	images: string[],
 	settings: Settings
 ): Promise<string> {
-	let vidsMid = await serial(imageReaders, images, settings)
-	vidsMid = vidsMid.filter((v) => v)
+	let vidsMidOrNull = await serial(imageReaders, images, settings)
+	let vidsMid = vidsMidOrNull.filter(notEmpty)
 
 	if (settings.transition) vidsMid = intersperse(vidsMid, settings.transition)
 
@@ -197,7 +201,8 @@ async function makeImageThing(
 	return out.path
 }
 
-function simpleConcat(videoPaths, outPath) {
+function simpleConcat(videoPaths: string[], outPath) {
+	console.log("simply concatting:", videoPaths)
 	return new Promise(async (res, rej) => {
 		let tempdir = await dir()
 
