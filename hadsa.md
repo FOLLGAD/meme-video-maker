@@ -33,6 +33,7 @@ Problem:
 
 -   Revamp the process into a pipeline, where every step is one of:
 
+    -   GIF: Start playing / Play once
     -   TTS Read med auto-reveal
     -   TTS read utan reveal
     -   Show area
