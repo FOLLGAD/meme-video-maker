@@ -63,6 +63,7 @@ async function serial(
 ) {
 	let arr: (string | null)[] = []
 	for (let i = 0; i < imageReaders.length; i++) {
+		console.log("Index:", i)
 		const result = await makeImageThing(
 			imageReaders[i],
 			images[i],
@@ -82,6 +83,7 @@ export async function makeVids(
 	images: string[],
 	settings: Settings
 ): Promise<string> {
+	console.log("Making clips...")
 	let vidsMidOrNull = await serial(imageReaders, images, settings)
 	let vidsMid = vidsMidOrNull.filter(notEmpty)
 
@@ -89,6 +91,7 @@ export async function makeVids(
 
 	const out = await file({ postfix: ".mp4" })
 
+	console.log("Concatting w/ transitions")
 	await simpleConcat(vidsMid, out.path)
 
 	let vidsFull = [out.path]
@@ -100,12 +103,15 @@ export async function makeVids(
 	if (vidsFull.length > 1) {
 		// If has outro or intro
 		vidPath = await file({ postfix: ".mp4" })
+		console.log("Adding intro, outro")
 		await simpleConcat(vidsFull, vidPath.path)
 		out.cleanup()
 	}
 
 	if (settings.song) {
 		const songout = await file({ postfix: ".mp4" })
+
+		console.log("Adding song")
 
 		await combineVideoAudio(vidPath.path, settings.song!, songout.path)
 		vidPath.cleanup()
@@ -184,13 +190,17 @@ async function makeImageThing(
 					.fps(25)
 					.videoCodec("libx264")
 					.save(f.path)
-					.on("error", rej)
+					.on("error", (err) =>
+						rej(
+							new Error(err || "Something with ffmpeg went wrong")
+						)
+					)
 					.on("end", () => res(f))
 			})
 
 			vids.push(f.path)
 		} catch (err) {
-			console.error(err)
+			console.error("MakeImageThing:", err)
 			// scene couldn't be rendered, so it won't be pushed to the video-list
 		}
 	}
