@@ -2,8 +2,9 @@
 import * as Canvas from "canvas"
 import * as ffmpeg from "fluent-ffmpeg"
 import { join } from "path"
-import { dir, file } from "tmp-promise"
+import { dir, file, dirSync, fileSync } from "tmp-promise"
 import { synthSpeech } from "./synth"
+import { writeFileSync } from "fs"
 
 // Ffprobe
 // Usually takes ~40ms
@@ -214,33 +215,62 @@ async function makeImageThing(
 	return out.path
 }
 
+let tempFolderInfo = dirSync()
+let tempFolder = tempFolderInfo.name
+
+function getConcat(videoPaths) {
+	let txt = fileSync()
+	let tempPath = txt.name
+
+	writeFileSync(tempPath, videoPaths.map((d) => `file '${d}'\n`).join(""))
+
+	let f = ffmpeg().input(tempPath).inputOptions(["-f concat", "-safe 0"])
+	return f
+}
+
 function simpleConcat(videoPaths: string[], outPath) {
-	if (videoPaths.length === 0) {
-		console.error("Warning: tried to concat an empty array!!")
-		return Promise.reject()
-	}
-
-	return new Promise(async (res, rej) => {
-		let tempdir = await dir()
-
-		let f = ffmpeg()
-		videoPaths.forEach((v) => {
-			f.input(v)
-		})
-		f.outputOptions(["-preset veryfast"])
-			.outputOptions(["-threads 1"])
+	return new Promise((res, rej) => {
+		getConcat(videoPaths)
+			.videoCodec("copy")
+			.audioCodec("copy")
 			.on("end", () => {
 				res()
-				tempdir.cleanup()
 			})
 			.on("error", (err) => {
 				console.error(err)
-				rej(err)
+				rej()
 			})
-			// @ts-ignore
-			.mergeToFile(outPath, tempdir.path)
+			.save(outPath)
 	})
 }
+
+// function simpleConcat(videoPaths: string[], outPath) {
+// 	if (videoPaths.length === 0) {
+// 		console.error("Warning: tried to concat an empty array!!")
+// 		return Promise.reject()
+// 	}
+
+// 	return new Promise(async (res, rej) => {
+// 		let tempdir = await dir()
+
+// 		let f = ffmpeg()
+// 		videoPaths.forEach((v) => {
+// 			f.input(v)
+// 		})
+// 		f.outputOptions(["-preset veryfast"])
+// 			.outputOptions(["-threads 1"])
+// 			.on("end", () => {
+// 				res()
+// 				tempdir.cleanup()
+// 			})
+// 			.on("error", (err) => {
+// 				console.error(err)
+// 				rej(err)
+// 			})
+// 			// @ts-ignore
+// 			.mergeToFile(outPath, tempdir.path)
+// 	})
+// }
 
 // TODO: scroll long images with video
 
