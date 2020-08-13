@@ -195,6 +195,10 @@ async function makeImageThing(
 		}
 	}
 
+	if (vids.length === 0) {
+		return null
+	}
+
 	const out = await file({ postfix: ".mp4" })
 	await simpleConcat(vids, out.path)
 
@@ -202,7 +206,11 @@ async function makeImageThing(
 }
 
 function simpleConcat(videoPaths: string[], outPath) {
-	console.log("simply concatting:", videoPaths)
+	if (videoPaths.length === 0) {
+		console.error("Warning: tried to concat an empty array!!")
+		return Promise.reject()
+	}
+
 	return new Promise(async (res, rej) => {
 		let tempdir = await dir()
 
