@@ -11,7 +11,7 @@ module.exports = {
 			path: "/home/ec2-user/4chan",
 			"pre-deploy-local": "",
 			"post-deploy":
-				"npm install && npm run build && pm2 reload ../../ecosystem.config.js --env production",
+				"npm install && npm run build && cd ../.. && pm2 reload ecosystem.config.js --env production",
 			"pre-setup": "",
 		},
 	},
