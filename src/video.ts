@@ -90,12 +90,10 @@ export async function makeVids(
 
 	if (settings.transition) vidsMid = intersperse(vidsMid, settings.transition)
 
-	const out = await file({ postfix: ".mp4" })
+	let out = await file({ postfix: ".mp4" })
 
 	console.log("Concatting w/ transitions")
 	await simpleConcat(vidsMid, out.path)
-
-	let vidsFull = [out.path]
 
 	if (settings.song) {
 		const songout = await file({ postfix: ".mp4" })
@@ -104,8 +102,11 @@ export async function makeVids(
 
 		await combineVideoAudio(out.path, settings.song!, songout.path)
 
-		vidsFull = [songout.path]
+		out.cleanup()
+		out = songout
 	}
+
+	let vidsFull = [out.path]
 
 	if (settings.intro) vidsFull.unshift(settings.intro)
 	if (settings.outro) vidsFull.push(settings.outro)
@@ -119,7 +120,7 @@ export async function makeVids(
 		out.cleanup()
 	}
 
-	return out.path
+	return vidPath.path
 }
 
 async function makeImageThing(
@@ -215,9 +216,6 @@ async function makeImageThing(
 	return out.path
 }
 
-let tempFolderInfo = dirSync()
-let tempFolder = tempFolderInfo.name
-
 function getConcat(videoPaths) {
 	let txt = fileSync()
 	let tempPath = txt.name
@@ -282,16 +280,15 @@ function combineVideoAudio(videoPath, audioPath, outPath) {
 		let videoInfo: any = await probe(videoPath)
 
 		ffmpeg(videoPath)
-			.videoCodec("libx264")
+			.videoCodec("copy")
 			.input(audioPath)
-			.audioCodec("aac")
 			.inputOptions([
 				"-stream_loop -1", // Repeats audio until it hits the previously set duration [https://stackoverflow.com/a/34280687/6912118]
 			])
+			.audioCodec("aac")
 			.duration(videoInfo.format.duration) // Run for the duration of the video
-			.complexFilter(["[0:a][1:a] amerge=inputs=2 [a]"])
-			.fpsOutput(25)
-			.outputOptions(["-map 0:v", "-map [a]"])
+			.complexFilter(["[0:a:0][1:a:0] amerge=inputs=2 [aout]"])
+			.outputOptions(["-map 0:v:0", "-map [aout]"])
 			.audioChannels(1)
 			.on("end", () => {
 				res()

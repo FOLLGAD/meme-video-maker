@@ -34,10 +34,12 @@ Problem:
 -   Revamp the process into a pipeline, where every step is one of:
 
     -   GIF: Start playing / Play once
+    -   Hide previously-set "blocking rectangle", revealing the content below
+    -   Show area
     -   TTS Read med auto-reveal
     -   TTS read utan reveal
-    -   Show area
-    -   Hide previously-set "blocking rectangle", revealing the content below
     -   Wait for a given time
+
+-   Pipeline can be re-ordered, but defaults to what you click
 
 -   Make requests replayable?
