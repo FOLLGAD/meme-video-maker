@@ -49,6 +49,24 @@ app.use(cors())
 
 const cache: Map<string, FileResult> = new Map()
 
+const queue: Function[] = []
+let currentlyRunning = false
+
+async function addToQueue(fn: Function) {
+	queue.push(fn)
+	if (!currentlyRunning) {
+		currentlyRunning = true
+		while (queue.length > 0) {
+			const job = queue.shift()
+
+			if (!job) continue
+
+			await job()
+		}
+		currentlyRunning = false
+	}
+}
+
 async function getFile(s3_key: string): Promise<string> {
 	if (cache.has(s3_key) && existsSync(cache.get(s3_key)!.path)) {
 		return cache.get(s3_key)!.path
@@ -169,7 +187,7 @@ router
 		const enabled: ImageReader[] = JSON.parse(body.enabled)
 		const rawSet: any = JSON.parse(body.settings)
 
-		makeVid(rawSet, enabled, images)
+		addToQueue(() => makeVid(rawSet, enabled, images))
 
 		ctx.body = {
 			success: true,

@@ -227,10 +227,11 @@ function simpleConcat(videoPaths: string[], outPath) {
 		videoPaths.forEach((v) => {
 			f.input(v)
 		})
-		f.on("end", () => {
-			res()
-			tempdir.cleanup()
-		})
+		f.outputOptions(["-preset veryfast"])
+			.on("end", () => {
+				res()
+				tempdir.cleanup()
+			})
 			.on("error", (err) => {
 				console.error(err)
 				rej(err)
