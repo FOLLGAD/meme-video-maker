@@ -5,7 +5,7 @@ module.exports = {
 		production: {
 			key: "~/.ssh/redditors-expansion.pem",
 			user: "ec2-user",
-			host: "ec2-18-197-134-112.eu-central-1.compute.amazonaws.com",
+			host: "image.redditvideomaker.com",
 			ref: "origin/master",
 			repo: "git@github.com:FOLLGAD/4chan-reader.git",
 			path: "/home/ec2-user/4chan",

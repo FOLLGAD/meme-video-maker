@@ -37,8 +37,10 @@ Problem:
     -   Hide previously-set "blocking rectangle", revealing the content below
     -   Show area
     -   TTS Read med auto-reveal
+        -   Button to "merge" tts with the next (shift-click)
     -   TTS read utan reveal
     -   Wait for a given time
+    -   reorder elements
 
 -   Pipeline can be re-ordered, but defaults to what you click
 
