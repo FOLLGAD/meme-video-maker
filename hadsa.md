@@ -24,6 +24,9 @@ Eller automatisering med Insomnia/API-klient
 
 ## TODO
 
+-   Ladda upp alla bilder i S3 storage
+-   Fixa en pipeline
+
 Problem:
 
 -   Sned text gick inte att klicka på
@@ -40,7 +43,6 @@ Problem:
         -   Button to "merge" tts with the next (shift-click)
     -   TTS read utan reveal
     -   Wait for a given time
-    -   reorder elements
 
 -   Pipeline can be re-ordered, but defaults to what you click
 
