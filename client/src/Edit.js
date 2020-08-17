@@ -28,7 +28,7 @@ function mapBlock(block) {
 		.join("\n")
 
 	return {
-		text,
+		text: text.toLowerCase(),
 		x: x - padding,
 		y: y - padding,
 		width: width + padding * 2,
