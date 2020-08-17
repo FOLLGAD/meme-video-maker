@@ -19,7 +19,7 @@ function mapBlock(block) {
 				})
 				.join(" ")
 			// remove >>12321332 (OP), >>1232313 (You)
-			parag = parag.replace(/>>\d+([^\w\n]*.+)?/g, "").trim()
+			parag = parag.replace(/>>\d+\s*(\(.+\))?/g, "").trim()
 			return parag
 		})
 		.join("\n")
