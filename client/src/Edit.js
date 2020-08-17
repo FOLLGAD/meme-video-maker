@@ -14,18 +14,7 @@ function mapBlock(block) {
 			let parag = p.words
 				.map((w) => {
 					return w.symbols
-						.map(({ text, property }) => {
-							const dBreak = property && property.detectedBreak
-
-							if (
-								dBreak &&
-								(dBreak.type === "LINE_BREAK" ||
-									dBreak.type === "EOL_SURE_SPACE")
-							)
-								return text + "\n"
-
-							return text
-						})
+						.map(({ text }) => text)
 						.join("")
 				})
 				.join(" ")
