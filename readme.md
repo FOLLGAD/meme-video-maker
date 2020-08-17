@@ -38,3 +38,16 @@ $ npm run client-build
 ```
 
 Serve the builded directory on netlify or any web server
+
+## Deploy
+
+Netlify is connected to the frontend, so any changes to the `/client` folder will trigger
+a build.
+
+To deploy the backend, do:
+
+```bash
+$ pm2 deploy ecosystem.config.js production
+```
+
+Running on AWS on fellers online
