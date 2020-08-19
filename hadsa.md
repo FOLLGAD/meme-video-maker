@@ -47,3 +47,16 @@ Problem:
 -   Pipeline can be re-ordered, but defaults to what you click
 
 -   Make requests replayable?
+
+API:
+
+type: read
+text: string
+reveal: bool
+rect: Rect
+
+type: pause
+secs: number
+
+type: reveal
+rect: Rect
