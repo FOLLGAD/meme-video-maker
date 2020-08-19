@@ -19,6 +19,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
             <div style={{ background: highlight === i ? "aliceblue" : "#eee" }}>
                 {renderInnerStage(stage, i)}
                 <div>
+                    <span style={{ marginRight: 3 }}>{i + 1}</span>
                     <button onClick={() => removeStage(i)}>Delete</button>
                 </div>
             </div>
@@ -64,7 +65,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             value={stage.secs}
                             min={0}
                             max={10}
-                            step={0.01}
+                            step={0.1}
                             onChange={(e) =>
                                 updateStage(i, {
                                     ...stage,
@@ -123,7 +124,6 @@ export default function ({ setPipeline, pipeline, highlight }) {
                                             {...provided.draggableProps}
                                             {...provided.dragHandleProps}
                                         >
-                                            {pipe.id}
                                             {renderStage(pipe, index)}
                                         </div>
                                     )}

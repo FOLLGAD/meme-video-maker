@@ -63,11 +63,30 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         ? "rgba(200, 200, 240, 0.4)"
                         : "rgba(200, 200, 200, 0.3)"
                 ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+                const margin = 10
+                const size = 50
+                ctx.fillStyle = "#000000ee"
+                ctx.fillRect(
+                    rect.x + rect.width - size - margin,
+                    rect.y + margin,
+                    size,
+                    size
+                )
+                ctx.fillStyle = "white"
+                ctx.font = "50px sans-serif"
+                ctx.textAlign = "center"
+                ctx.textBaseline = "middle"
+                ctx.fillText(
+                    `${i + 1}`,
+                    rect.x + rect.width - size / 2 - margin,
+                    rect.y + margin + size / 2 + 10,
+                    size
+                )
             }
         })
 
         // Draw reading blocks
-        blocks.forEach(({ x, y, width, height }, i) => {
+        blocks.forEach(({ rect: { x, y, width, height } }, i) => {
             const enabled = indexIsEnabled(i)
             ctx.strokeStyle = enabled ? "lightgreen" : "tomato"
             ctx.lineWidth = 2
@@ -140,7 +159,9 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             return addStage({ type: "reveal", rect })
         }
 
-        const found = blocks.findIndex((rect) => isInRect(rect, mouseX, mouseY))
+        const found = blocks.findIndex(({ rect }) =>
+            isInRect(rect, mouseX, mouseY)
+        )
 
         if (found !== -1) {
             if (indexIsEnabled(found)) {
@@ -163,6 +184,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     updateStage(ind, {
                         ...pipeline[ind],
                         text: newText,
+                        rect: pipeline[ind].rect,
                     })
                 }
             } else {
@@ -170,7 +192,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     type: "read",
                     _index: found,
                     text: blocks[found].text,
-                    rect: blocks[found],
+                    rect: blocks[found].rect,
                     reveal: true,
                 })
             }

@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo, useReducer, useState } from "react"
+import React, { useMemo, useReducer, useState } from "react"
 import FileImage from "./FileImage"
 import Settings from "./Settings"
+import { estimateTimePretty } from "./timeCalc"
 
 function mapBlock(block) {
     const vert = block.boundingBox.vertices
@@ -27,10 +28,12 @@ function mapBlock(block) {
 
     return {
         text,
-        x: x - padding,
-        y: y - padding,
-        width: width + padding * 2,
-        height: height + padding * 2,
+        rect: {
+            x: x - padding,
+            y: y - padding,
+            width: width + padding * 2,
+            height: height + padding * 2,
+        },
     }
 }
 
@@ -56,10 +59,6 @@ function settingsReducer(state, action) {
 export default function Edit({ res, images, onFinish }) {
     // res[0][0].fullTextAnnotation.pages[0].blocks
     const [index, setIndex] = useState(0)
-    const [alwaysShow, setAlwaysShow] = useState([])
-
-    const [enabledBlocks, setEnabledBlocks] = useState([])
-    const [textBlocks, setTextBlocks] = useState([])
 
     const img = images[index]
 
@@ -70,10 +69,6 @@ export default function Edit({ res, images, onFinish }) {
                 : []
             return blocks.map(mapBlock)
         })
-        // set all to false
-        setEnabledBlocks(draw.map((a) => a.map(() => false)))
-        setAlwaysShow(draw.map(() => []))
-        setTextBlocks(draw.map((a) => a.map((b) => b.text)))
         return draw
     }, [res])
 
@@ -83,12 +78,9 @@ export default function Edit({ res, images, onFinish }) {
 
     const onSubmit = async (e) => {
         e.preventDefault()
-        const blocks = drawBlocks.map((b, i) => {
-            // TODO: send data
-        })
 
         try {
-            await onFinish(blocks, images, settings)
+            await onFinish(pipeline, images, settings)
             setStage(2)
         } catch (error) {
             console.error("error")
@@ -124,6 +116,10 @@ export default function Edit({ res, images, onFinish }) {
         </div>
     )
 
+    const estimatedTime = useMemo(() => estimateTimePretty(pipeline), [
+        pipeline,
+    ])
+
     return (
         <div>
             {stage === 2 && (
@@ -131,9 +127,12 @@ export default function Edit({ res, images, onFinish }) {
                     <p>
                         Video is rendering. Go to the main page to download the
                         video when the rendering is finished (takes around 10
-                        mins)
+                        mins). You can also go back to continue on the same
+                        video.
                     </p>
-                    <button onClick={() => setStage(1)}>Back</button>
+                    <button onClick={() => setStage(1)}>
+                        Continue with video
+                    </button>
                 </div>
             )}
             {stage === 1 && (
@@ -157,6 +156,7 @@ export default function Edit({ res, images, onFinish }) {
                     {btns}
 
                     <div>
+                        <div>{estimatedTime}</div>
                         <FileImage
                             key={img}
                             src={img}
