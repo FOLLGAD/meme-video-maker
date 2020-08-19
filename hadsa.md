@@ -24,6 +24,10 @@ Eller automatisering med Insomnia/API-klient
 
 ## dsa
 
+Run testing (just startup tests to start with)
+
+Build on github actions/circleCI and push to prod server
+
 ## TODO
 
 -   Ladda upp alla bilder i S3 storage
