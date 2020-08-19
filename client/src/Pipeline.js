@@ -54,6 +54,19 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             />
                             Auto reveal?
                         </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={stage.blockuntil}
+                                onChange={(e) =>
+                                    updateStage(i, {
+                                        ...stage,
+                                        blockuntil: e.target.checked,
+                                    })
+                                }
+                            />
+                            Block text
+                        </label>
                     </div>
                 )
             case "pause":
@@ -66,12 +79,12 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             min={0}
                             max={10}
                             step={0.1}
-                            onChange={(e) =>
+                            onChange={(e) => {
                                 updateStage(i, {
                                     ...stage,
-                                    secs: e.target.value,
+                                    secs: Number(e.target.valueAsNumber),
                                 })
-                            }
+                            }}
                         />
                     </div>
                 )

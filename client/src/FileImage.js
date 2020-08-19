@@ -180,7 +180,9 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 if (revInd !== -1) {
                     const ind = pipeline.length - 1 - revInd
                     const newText =
-                        pipeline[ind].text + " " + blocks[found].text
+                        pipeline[ind].text +
+                        " " +
+                        blocks[found].text.toLowerCase()
                     updateStage(ind, {
                         ...pipeline[ind],
                         text: newText,
@@ -191,8 +193,9 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 addStage({
                     type: "read",
                     _index: found,
-                    text: blocks[found].text,
+                    text: blocks[found].text.toLowerCase(),
                     rect: blocks[found].rect,
+                    blockuntil: false,
                     reveal: true,
                 })
             }
