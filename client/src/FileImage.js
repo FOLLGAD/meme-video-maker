@@ -151,12 +151,13 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 )
             } else if (shiftDown) {
                 // If shift is down, look for the last TTS and append the clicked text to it.
-                const ind = pipeline
+                const revInd = pipeline
                     .slice()
                     .reverse()
                     .findIndex((s) => s.type === "read")
 
-                if (ind !== -1) {
+                if (revInd !== -1) {
+                    const ind = pipeline.length - 1 - revInd
                     const newText =
                         pipeline[ind].text + " " + blocks[found].text
                     updateStage(ind, {

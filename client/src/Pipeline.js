@@ -31,7 +31,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                     <div>
                         <textarea
                             style={{ width: "100%" }}
-                            rows="5"
+                            rows="3"
                             onChange={(e) =>
                                 updateStage(i, {
                                     ...stage,
