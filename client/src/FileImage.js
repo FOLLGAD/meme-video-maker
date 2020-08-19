@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from "react"
+import Pipeline from "./Pipeline"
+import { standardPause } from "./constants"
 
 // Gets the mouse click position within the canvas
 function getCursorPosition(canvas, event) {
@@ -8,18 +10,25 @@ function getCursorPosition(canvas, event) {
     return [x, y]
 }
 
-export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enabledBlocks, setEnabledBlocks, textBlocks, setTextBlocks }) {
+let counter = 0
+
+const isInRect = (rect, x, y) =>
+    x >= rect.x &&
+    x <= rect.x + rect.width &&
+    y >= rect.y &&
+    y <= rect.y + rect.height
+
+export default function FileImage({ src, blocks, pipeline, setPipeline }) {
     const canvasRef = useRef(null)
     const [ctx, setCtx] = useState(null)
     const [scale, setScale] = useState(1)
-    const [selectAlwaysShow, setAlwShow] = useState(false)
 
     useEffect(() => {
         setCtx(canvasRef.current.getContext("2d"))
     }, [])
 
-    const drawImage = src => {
-        return new Promise(res => {
+    const drawImage = (src) => {
+        return new Promise((res) => {
             // https://stackoverflow.com/questions/6775767/how-can-i-draw-an-image-from-the-html5-file-api-on-canvas
             const img = new Image()
             img.onload = () => {
@@ -41,146 +50,220 @@ export default function FileImage({ src, blocks, setAlwaysShow, alwaysShow, enab
         })
     }
 
+    const indexIsEnabled = (i) =>
+        pipeline.some((s) => s.type === "read" && s._index === i)
+
     const drawOverlay = () => {
-        alwaysShow.forEach(({ x, y, width, height }) => {
-            ctx.fillStyle = "rgba(50, 180, 70, 0.3)"
-            ctx.fillRect(x, y, width, height)
+        // Draw reveal blocks
+        pipeline.forEach((stage, i) => {
+            if (stage.type === "reveal") {
+                const { rect } = stage
+                ctx.fillStyle =
+                    highlight === i
+                        ? "rgba(200, 200, 240, 0.4)"
+                        : "rgba(200, 200, 200, 0.3)"
+                ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+                const margin = 10
+                const size = 50
+                ctx.fillStyle = "#000000ee"
+                ctx.fillRect(
+                    rect.x + rect.width - size - margin,
+                    rect.y + margin,
+                    size,
+                    size
+                )
+                ctx.fillStyle = "white"
+                ctx.font = "50px sans-serif"
+                ctx.textAlign = "center"
+                ctx.textBaseline = "middle"
+                ctx.fillText(
+                    `${i + 1}`,
+                    rect.x + rect.width - size / 2 - margin,
+                    rect.y + margin + size / 2 + 10,
+                    size
+                )
+            }
         })
 
-        // Draw the blocks
-        blocks.forEach(({ x, y, width, height }, i) => {
-            const enabled = enabledBlocks[i] !== false
+        // Draw reading blocks
+        blocks.forEach(({ rect: { x, y, width, height } }, i) => {
+            const enabled = indexIsEnabled(i)
             ctx.strokeStyle = enabled ? "lightgreen" : "tomato"
             ctx.lineWidth = 2
             ctx.strokeRect(x, y, width, height)
-            if (enabled) {
-                ctx.fillStyle = "#000"
-                ctx.textAlign = "right"
-                ctx.fillText(enabledBlocks[i], x + width, y + height)
-            }
         })
     }
 
     const [mouseDownAt, setMouseDownAt] = useState(null)
-    const onCanvasMouseDown = event => {
-        const [mouseX, mouseY] = getCursorPosition(canvasRef.current, event)
-            .map(p => p / scale)
+    const onCanvasMouseDown = (event) => {
+        const [mouseX, mouseY] = getCursorPosition(
+            canvasRef.current,
+            event
+        ).map((p) => p / scale)
 
         setMouseDownAt([mouseX, mouseY])
     }
-    const onCanvasMouseUp = event => {
-        const [mouseX, mouseY] = getCursorPosition(canvasRef.current, event)
-            .map(p => p / scale)
 
-        if (selectAlwaysShow && mouseDownAt) {
-            const [lastX, lastY] = mouseDownAt
-            const rec = {
-                x: Math.min(mouseX, lastX),
-                y: Math.min(mouseY, lastY),
-                width: Math.abs(mouseX - lastX),
-                height: Math.abs(mouseY - lastY),
-            }
-            setMouseDownAt(null)
+    const addStage = (stage) =>
+        setPipeline([...pipeline, { ...stage, id: counter++ }])
 
-            if (rec.height > 5 && rec.width > 5) {
-                setAlwaysShow([...alwaysShow, rec])
-                return
-            } else {
-                // Try to delete
-                const ind = alwaysShow.findIndex(a => a.x < mouseX && a.y < mouseY && a.x + a.width > mouseX && a.y + a.height > mouseY)
-                if (ind !== -1) {
-                    setAlwaysShow([...alwaysShow.slice(0, ind), ...alwaysShow.slice(ind + 1)])
-                    return
-                }
-            }
-        }
-
-        const index = blocks.findIndex(({ x, y, width, height }) => {
-            const intersects = mouseX >= x && mouseX <= x + width
-                && mouseY >= y && mouseY <= y + height
-
-            return intersects
-        })
-
-        if (index !== -1) {
-            const alreadyEnabled = enabledBlocks[index] !== false
-            if (alreadyEnabled) {
-                const newOne = enabledBlocks.map((v, i) => i === index ? false : v)
-                setEnabledBlocks(newOne)
-            } else {
-                const lastMax = Math.max(...enabledBlocks)
-                const newOne = enabledBlocks.map((v, i) => i === index ? lastMax + 1 : v)
-                setEnabledBlocks(newOne)
-            }
-        }
+    const removeStage = (index) => {
+        pipeline.splice(index, 1)
+        setPipeline([...pipeline])
     }
 
-    const isAllEnabled = useCallback(() => enabledBlocks.every(v => v !== false), [enabledBlocks])
+    const updateStage = (index, newStage) => {
+        setPipeline([
+            ...pipeline.slice(0, index),
+            newStage,
+            ...pipeline.slice(index + 1),
+        ])
+    }
 
-    const enableAll = useCallback(() => {
-        const enab = enabledBlocks.map((_, i) => i)
-        setEnabledBlocks(enab)
-    }, [enabledBlocks, setEnabledBlocks])
+    const [highlight, setHighlight] = useState(null)
 
-    const disableAll = useCallback(() => {
-        const enab = enabledBlocks.map(() => false)
-        setEnabledBlocks(enab)
-    }, [enabledBlocks, setEnabledBlocks])
+    const [shiftDown, setShift] = useState(false)
 
-    // useEffect(() => {
-    //     const func = e => {
-    //         if (e.code === "KeyA") {
-    //             isAllEnabled() ? disableAll() : enableAll()
-    //         }
-    //     }
-    //     document.addEventListener("keyup", func)
+    const keyHandler = (e) => {
+        if (e.key === "Shift") setShift(e.type === "keydown")
+    }
 
-    //     // Cleanup
-    //     return () => document.removeEventListener("keyup", func)
-    // }, [isAllEnabled, disableAll, enableAll])
+    document.addEventListener("keydown", keyHandler)
+    document.addEventListener("keyup", keyHandler)
+
+    const onCanvasMouseUp = (event) => {
+        const [mouseX, mouseY] = getCursorPosition(
+            canvasRef.current,
+            event
+        ).map((p) => p / scale)
+
+        const [fromX, fromY] = mouseDownAt
+        setHighlight(null)
+
+        const rect = {
+            x: Math.min(mouseX, fromX),
+            y: Math.min(mouseY, fromY),
+            width: Math.abs(mouseX - fromX),
+            height: Math.abs(mouseY - fromY),
+        }
+
+        if (
+            rect.x + rect.width < 0 ||
+            rect.x > canvasRef.current.width / scale ||
+            rect.y + rect.height < 0 ||
+            rect.y > canvasRef.current.height / scale
+        )
+            return
+
+        if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
+            return addStage({ type: "reveal", rect })
+        }
+
+        const found = blocks.findIndex(({ rect }) =>
+            isInRect(rect, mouseX, mouseY)
+        )
+
+        if (found !== -1) {
+            if (indexIsEnabled(found)) {
+                setPipeline(
+                    pipeline.filter(
+                        (s) => s.type !== "read" || s._index !== found
+                    )
+                )
+            } else if (shiftDown) {
+                // If shift is down, look for the last TTS and append the clicked text to it.
+                const revInd = pipeline
+                    .slice()
+                    .reverse()
+                    .findIndex((s) => s.type === "read")
+
+                if (revInd !== -1) {
+                    const ind = pipeline.length - 1 - revInd
+                    const newText =
+                        pipeline[ind].text +
+                        " " +
+                        blocks[found].text.toLowerCase()
+                    updateStage(ind, {
+                        ...pipeline[ind],
+                        text: newText,
+                        rect: pipeline[ind].rect,
+                    })
+                }
+            } else {
+                addStage({
+                    type: "read",
+                    _index: found,
+                    text: blocks[found].text.toLowerCase(),
+                    rect: blocks[found].rect,
+                    blockuntil: false,
+                    reveal: true,
+                })
+            }
+        }
+
+        const rectIndex = pipeline.findIndex(
+            (val) => val.rect && isInRect(val.rect, mouseX, mouseY)
+        )
+        if (rectIndex !== -1) {
+            setHighlight(rectIndex)
+        }
+    }
 
     useEffect(() => {
         if (canvasRef.current && ctx)
-            drawImage(src)
-                .then(() => {
-                    drawOverlay()
-                })
+            drawImage(src).then(() => {
+                drawOverlay()
+            })
+    }, [blocks, src, ctx, pipeline, highlight])
 
-    }, [enabledBlocks, blocks, src, ctx, alwaysShow])
-
-    const updateText = i => e => {
-        e.preventDefault()
-
-        textBlocks[i] = e.target.value
-        setTextBlocks(textBlocks)
-    }
-
-    const stopProp = e => e.stopPropagation()
+    useEffect(() => {
+        document.addEventListener("mousedown", onCanvasMouseDown)
+        document.addEventListener("mouseup", onCanvasMouseUp)
+        return () => {
+            document.removeEventListener("mousedown", onCanvasMouseDown)
+            document.removeEventListener("mouseup", onCanvasMouseUp)
+        }
+    }, [mouseDownAt, pipeline, scale])
 
     return (
         <div style={{ display: "flex" }}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-                {selectAlwaysShow
-                    ? <button onClick={() => setAlwShow(false)}>Select comments</button>
-                    : <button onClick={() => setAlwShow(true)}>Select always show</button>
-                }
-                {isAllEnabled() ?
-                    <button onClick={disableAll}>Disable all</button> :
-                    <button onClick={enableAll}>Enable all</button>
-                }
+            <div style={{ display: "flex", flexDirection: "column" }}></div>
+            <div>
+                <canvas ref={canvasRef} />
             </div>
             <div>
-                <canvas onMouseDown={onCanvasMouseDown} onMouseUp={onCanvasMouseUp} ref={canvasRef} />
-            </div>
-            <div style={{ width: 400 }}>
-                {textBlocks
-                    .map((e, i) => [e, i])
-                    .filter((_, i) => enabledBlocks[i] !== false)
-                    .map(([t, i]) => (
-                        <div key={i}>
-                            <textarea style={{ width: "100%" }} rows="5" onKeyUp={stopProp} onKeyDown={stopProp} onChange={updateText(i)} value={t} />
-                        </div>
-                    ))}
+                <div>
+                    <button
+                        onClick={() =>
+                            addStage({ type: "pause", secs: standardPause })
+                        }
+                    >
+                        Add pause
+                    </button>
+                    <button onClick={() => addStage({ type: "gif", times: 1 })}>
+                        Play GIF
+                    </button>
+                    <button
+                        onClick={() =>
+                            addStage({
+                                type: "reveal",
+                                rect: {
+                                    x: 0,
+                                    y: 0,
+                                    width: canvasRef.current.width / scale,
+                                    height: canvasRef.current.height / scale,
+                                },
+                            })
+                        }
+                    >
+                        Reaveal full
+                    </button>
+                </div>
+                <Pipeline
+                    pipeline={pipeline}
+                    setPipeline={setPipeline}
+                    highlight={highlight}
+                />
             </div>
         </div>
     )
