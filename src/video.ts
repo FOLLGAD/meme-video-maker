@@ -344,19 +344,28 @@ async function makeImageThing(
                 stage.rect.height
             )
         } else if (stage.type === "gif") {
-            const times = Math.min(Math.abs(stage.times), 40)
-            let f = await file({ postfix: ".mp4" })
+            const times = Math.min(Math.abs(stage.times), 10) | 0
 
-            ffmpeg(image)
-                .loop(times)
-                .size("1920x1080")
-                .autopad()
-                .fps(25)
-                .videoCodec("libx264")
-                .outputOptions(["-pix_fmt yuv420p"])
-                .save(f.path)
-            // play the gif somehow
-            console.error("GIF: Unimplemented")
+            const f: FileResult = await new Promise(async (res, rej) => {
+                let f = await file({ postfix: ".mp4" })
+
+                ffmpeg(image)
+                    .size("1920x1080")
+                    .autopad()
+                    .fps(25)
+                    .videoCodec("libx264")
+                    .outputOptions(["-pix_fmt yuv420p"])
+                    .save(f.path)
+                    .on("error", (err) =>
+                        rej(
+                            new Error(err || "Something with ffmpeg went wrong")
+                        )
+                    )
+                    .on("end", () => res(f))
+            })
+
+            // Push the gif to the vids array as many times as needed!
+            for (let i = 0; i < times; i++) vids.push(f.path)
         }
     }
 

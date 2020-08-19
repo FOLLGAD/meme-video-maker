@@ -90,6 +90,25 @@ export default function ({ setPipeline, pipeline, highlight }) {
                 )
             case "reveal":
                 return <div>Reveal area</div>
+            case "gif":
+                return (
+                    <div>
+                        Play GIF
+                        <input
+                            type="number"
+                            value={stage.times}
+                            min={0}
+                            max={10}
+                            step={1}
+                            onChange={(e) => {
+                                updateStage(i, {
+                                    ...stage,
+                                    times: Number(e.target.valueAsNumber),
+                                })
+                            }}
+                        />
+                    </div>
+                )
             default:
                 return <div>Hello</div>
         }

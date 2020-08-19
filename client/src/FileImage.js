@@ -240,6 +240,24 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     >
                         Add pause
                     </button>
+                    <button onClick={() => addStage({ type: "gif", times: 1 })}>
+                        Play GIF
+                    </button>
+                    <button
+                        onClick={() =>
+                            addStage({
+                                type: "reveal",
+                                rect: {
+                                    x: 0,
+                                    y: 0,
+                                    width: canvasRef.current.width / scale,
+                                    height: canvasRef.current.height / scale,
+                                },
+                            })
+                        }
+                    >
+                        Reaveal full
+                    </button>
                 </div>
                 <Pipeline
                     pipeline={pipeline}
