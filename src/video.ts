@@ -320,7 +320,6 @@ async function makeImageThing(
                         .autopad()
                         .fps(25)
                         .videoCodec("libx264")
-                        .videoCodec("aac")
                         .outputOptions([`-t ${pauseTime}`, "-pix_fmt yuv420p"])
                         .save(f.path)
                         .on("error", (err) =>
