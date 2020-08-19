@@ -22,6 +22,8 @@ om det inte funkar, gå tillbaks till första steget.
 Testing i detta fallet skulle öka hastigheten ofantligt.
 Eller automatisering med Insomnia/API-klient
 
+## dsa
+
 ## TODO
 
 -   Ladda upp alla bilder i S3 storage
