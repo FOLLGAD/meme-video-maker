@@ -15,9 +15,6 @@ const defaultVoiceSettings = {
     pitch: -2.0,
 }
 
-console.log("IS APE")
-console.log(!/[\d\w]/gim.test("ape"))
-
 export function synthSpeech({
     text,
     voice,
