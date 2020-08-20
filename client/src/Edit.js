@@ -51,6 +51,15 @@ function settingsReducer(state, action) {
             return { ...state, song: action.data }
         case "voice":
             return { ...state, voice: action.data }
+        case "dimensions":
+            const [outWidth, outHeight] = action.data
+                .split("x")
+                .map((a) => parseInt(a))
+            return {
+                ...state,
+                outWidth,
+                outHeight,
+            }
         default:
             console.error("undefined type", action.type)
     }
@@ -99,6 +108,8 @@ export default function Edit({ res, images, onFinish }) {
         transition: "",
         song: "",
         voice: "",
+        outWidth: 1920,
+        outHeight: 1080,
     })
 
     const btns = (

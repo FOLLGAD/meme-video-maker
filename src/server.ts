@@ -114,13 +114,13 @@ const logDate = () => new Date().toLocaleString()
 
 async function makeVid(rawSet, pipeline: Pipeline[], images) {
     const settings = {
+        ...rawSet,
         intro: rawSet.intro ? await getFile(rawSet.intro) : undefined,
         transition: rawSet.transition
             ? await getFile(rawSet.transition)
             : undefined,
         outro: rawSet.outro ? await getFile(rawSet.outro) : undefined,
         song: rawSet.song ? await getFile(rawSet.song) : undefined,
-        voice: rawSet.voice,
     }
 
     console.log(logDate(), "Making video...")
@@ -130,7 +130,7 @@ async function makeVid(rawSet, pipeline: Pipeline[], images) {
         images.map((i) => i.image),
         settings
     ).then((vid) => {
-        console.log(logDate(), "Video rendered on ", vid)
+        console.log(logDate(), "Video finished on ", vid)
         const now = new Date()
 
         let expires = new Date()

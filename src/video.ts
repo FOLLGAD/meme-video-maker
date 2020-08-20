@@ -56,6 +56,8 @@ interface Settings {
     outro?: string
     song?: string
     voice?: string
+    outWidth?: number
+    outHeight?: number
 }
 
 export const filesPath = join(__dirname, "../files")
@@ -153,30 +155,25 @@ async function makeImageThing(
         return null
     }
 
+    const outWidth = settings.outWidth || 1920
+    const outHeight = settings.outHeight || 1080
+
+    if (outWidth > 10000 || outHeight > 10000)
+        throw new Error("Too large video dimensions bro")
+
     const loadedImage = await Canvas.loadImage(image)
     const { width, height } = loadedImage
-    const imageCanvas = await Canvas.createCanvas(width, height)
+    const imageCanvas = Canvas.createCanvas(width, height)
     const imageCanvCtx = imageCanvas.getContext("2d")
 
     // Create the canvas that will cover the image
-    const blockingCanvas = await Canvas.createCanvas(width, height)
+    const blockingCanvas = Canvas.createCanvas(width, height)
     // ...and fill it black
     const ctx = blockingCanvas.getContext("2d")
     ctx.fillStyle = blockColor
     ctx.fillRect(0, 0, width, height)
 
     let vids: string[] = []
-
-    const createFfmpeg = (opts = {}) =>
-        ffmpeg(opts)
-            .audioCodec("aac")
-            .outputOptions(["-pix_fmt yuv420p"])
-            .audioFrequency(24000)
-            .audioChannels(2)
-            .size("1920x1080")
-            .autopad()
-            .fps(25)
-            .videoCodec("libx264")
 
     for (let i = 0; i < pipeline.length; i++) {
         const stage = pipeline[i]
@@ -236,7 +233,15 @@ async function makeImageThing(
                             )
                         })
 
-                    createFfmpeg()
+                    ffmpeg()
+                        .audioCodec("aac")
+                        .outputOptions(["-pix_fmt yuv420p"])
+                        .audioFrequency(24000)
+                        .audioChannels(2)
+                        .size(`${outWidth}x${outHeight}`)
+                        .autopad()
+                        .fps(25)
+                        .videoCodec("libx264")
                         .input(imageCanvas.createPNGStream())
                         .input(speechFile)
                         .save(f.path)
@@ -282,7 +287,7 @@ async function makeImageThing(
                             "anullsrc=channel_layout=stereo:sample_rate=24000"
                         )
                         .inputOptions(["-f lavfi"])
-                        .size("1920x1080")
+                        .size(`${outWidth}x${outHeight}`)
                         .autopad()
                         .fps(25)
                         .videoCodec("libx264")

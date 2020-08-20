@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import apiFetch from './apiFetch';
-import Modal from 'react-modal'
+import React, { useEffect, useState } from "react"
+import apiFetch from "./apiFetch"
+import Modal from "react-modal"
 
-Modal.setAppElement('#root')
+Modal.setAppElement("#root")
 
 export default function ({ settings, dispatchSettings, onSubmit }) {
     const [files, setFiles] = useState({ videos: [], songs: [] })
     const [themes, setThemes] = useState([])
 
     useEffect(() => {
-        apiFetch('/files')
-            .then(d => d.json())
-            .then(files => {
+        apiFetch("/files")
+            .then((d) => d.json())
+            .then((files) => {
                 setFiles(files)
             })
     }, [])
 
     const getThemes = () => {
-        apiFetch('/themes')
-            .then(d => d.json())
-            .then(themes => {
+        apiFetch("/themes")
+            .then((d) => d.json())
+            .then((themes) => {
                 setThemes(themes)
             })
     }
@@ -28,7 +28,8 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
 
     const [loading, setLoading] = useState(false)
 
-    const dispatchSet = type => e => dispatchSettings({ type, data: e.target.value })
+    const dispatchSet = (type) => (e) =>
+        dispatchSettings({ type, data: e.target.value })
 
     const submit = async (e) => {
         setLoading(true)
@@ -36,22 +37,22 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
         setLoading(false)
     }
 
-    const [modalIsOpen, setIsOpen] = useState(false);
-    const [themeName, setThemeName] = useState('');
+    const [modalIsOpen, setIsOpen] = useState(false)
+    const [themeName, setThemeName] = useState("")
 
-    const saveTheme = e => {
+    const saveTheme = (e) => {
         e.preventDefault()
         setLoading(true)
 
-        apiFetch('/themes', {
-            method: 'POST',
+        apiFetch("/themes", {
+            method: "POST",
             body: JSON.stringify({
                 ...settings,
                 name: themeName,
             }),
             headers: {
-                'content-type': 'application/json'
-            }
+                "content-type": "application/json",
+            },
         }).then(() => {
             setIsOpen(false)
             setLoading(false)
@@ -60,15 +61,15 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
         })
     }
 
-    const deleteTheme = id => () => {
-        apiFetch('/themes/' + id, {
-            method: 'DELETE',
+    const deleteTheme = (id) => () => {
+        apiFetch("/themes/" + id, {
+            method: "DELETE",
         }).then(() => {
             getThemes()
         })
     }
 
-    const selectTheme = theme => () => {
+    const selectTheme = (theme) => () => {
         dispatchSettings({ type: "intro", data: theme.intro || "" })
         dispatchSettings({ type: "transition", data: theme.transition || "" })
         dispatchSettings({ type: "outro", data: theme.outro || "" })
@@ -76,106 +77,172 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
         dispatchSettings({ type: "voice", data: theme.voice || "" })
     }
 
+    const dimensions = [
+        { width: 1920, height: 1080 },
+        { width: 1080, height: 1920 },
+    ]
+
     return (
-        <div style={{ display: 'flex' }} className="container">
+        <div style={{ display: "flex" }} className="container">
             <form style={{ flexGrow: 1 }} className="card">
                 <div>
                     <label>
                         <div>Intro</div>
-                        <select value={settings.intro} onChange={dispatchSet("intro")}>
+                        <select
+                            value={settings.intro}
+                            onChange={dispatchSet("intro")}
+                        >
                             <option value="">None</option>
-                            {files.videos.map(file =>
-                                <option key={file} value={file}>{file}</option>
-                            )}
+                            {files.videos.map((file) => (
+                                <option key={file} value={file}>
+                                    {file}
+                                </option>
+                            ))}
                         </select>
                     </label>
                 </div>
                 <div>
                     <label>
                         <div>Transition</div>
-                        <select value={settings.transition} onChange={dispatchSet("transition")}>
+                        <select
+                            value={settings.transition}
+                            onChange={dispatchSet("transition")}
+                        >
                             <option value="">None</option>
-                            {files.videos.map(file =>
-                                <option key={file} value={file}>{file}</option>
-                            )}
+                            {files.videos.map((file) => (
+                                <option key={file} value={file}>
+                                    {file}
+                                </option>
+                            ))}
                         </select>
                     </label>
                 </div>
                 <div>
                     <label>
                         <div>Outro</div>
-                        <select value={settings.outro} onChange={dispatchSet("outro")}>
+                        <select
+                            value={settings.outro}
+                            onChange={dispatchSet("outro")}
+                        >
                             <option value="">None</option>
-                            {files.videos.map(file =>
-                                <option key={file} value={file}>{file}</option>
-                            )}
+                            {files.videos.map((file) => (
+                                <option key={file} value={file}>
+                                    {file}
+                                </option>
+                            ))}
                         </select>
                     </label>
                 </div>
                 <div>
                     <label>
                         <div>Song</div>
-                        <select value={settings.song} onChange={dispatchSet("song")}>
+                        <select
+                            value={settings.song}
+                            onChange={dispatchSet("song")}
+                        >
                             <option value="">None</option>
-                            {files.songs.map(file =>
-                                <option key={file} value={file}>{file}</option>
-                            )}
+                            {files.songs.map((file) => (
+                                <option key={file} value={file}>
+                                    {file}
+                                </option>
+                            ))}
                         </select>
                     </label>
                 </div>
                 <div>
                     <label>
                         <div>TTS voice</div>
-                        <select value={settings.voice} onChange={dispatchSet("voice")}>
+                        <select
+                            value={settings.voice}
+                            onChange={dispatchSet("voice")}
+                        >
                             <option value="">Daniel UK</option>
                             <option value="google-us">Google (US)</option>
                             <option value="google-uk">Google (UK)</option>
                         </select>
                     </label>
                 </div>
+                <div>
+                    <label>
+                        <div>Dimensions</div>
+                        <select
+                            value={settings.outWidth + "x" + settings.outHeight}
+                            onChange={dispatchSet("dimensions")}
+                        >
+                            {dimensions.map((dims) => (
+                                <option
+                                    key={dims.width + "x" + dims.height}
+                                    value={dims.width + "x" + dims.height}
+                                >
+                                    {dims.width}x{dims.height}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
 
                 <div style={{ padding: "10px 0" }}>
-                    <button onClick={submit} disabled={loading}>Render</button>
+                    <button onClick={submit} disabled={loading}>
+                        Render
+                    </button>
                 </div>
             </form>
             <div style={{ flexGrow: 1 }} className="card">
                 <div className="themes">
-                    {themes ? themes.map(theme => (
-                        <div key={theme.themeId} className="theme" onClick={selectTheme(theme)}>
-                            {theme.name}
+                    {themes
+                        ? themes.map((theme) => (
+                              <div
+                                  key={theme.themeId}
+                                  className="theme"
+                                  onClick={selectTheme(theme)}
+                              >
+                                  {theme.name}
 
-                            <a className="delete" onClick={deleteTheme(theme.themeId)}>X</a>
-                        </div>
-                    )) : "Loading..."}
+                                  <a
+                                      className="delete"
+                                      onClick={deleteTheme(theme.themeId)}
+                                  >
+                                      X
+                                  </a>
+                              </div>
+                          ))
+                        : "Loading..."}
                 </div>
-                <button onClick={() => setIsOpen(true)}>Save current as new theme</button>
+                <button onClick={() => setIsOpen(true)}>
+                    Save current as new theme
+                </button>
 
-                <Modal isOpen={modalIsOpen}
+                <Modal
+                    isOpen={modalIsOpen}
                     onRequestClose={() => setIsOpen(false)}
                     contentLabel="Save theme"
                     style={{
                         content: {
-                            top: '50%',
-                            left: '50%',
-                            right: 'auto',
-                            bottom: 'auto',
-                            marginRight: '-50%',
-                            transform: 'translate(-50%, -50%)',
+                            top: "50%",
+                            left: "50%",
+                            right: "auto",
+                            bottom: "auto",
+                            marginRight: "-50%",
+                            transform: "translate(-50%, -50%)",
                             width: 300,
-                        }
+                        },
                     }}
                 >
                     <h2>Save theme</h2>
                     <form>
-                        <input type="text"
+                        <input
+                            type="text"
                             name="name"
                             placeholder="Theme name"
                             value={themeName}
-                            onChange={e => setThemeName(e.target.value)} />
+                            onChange={(e) => setThemeName(e.target.value)}
+                        />
 
                         <br />
 
-                        <button disabled={loading} onClick={saveTheme}>Submit</button>
+                        <button disabled={loading} onClick={saveTheme}>
+                            Submit
+                        </button>
                     </form>
                 </Modal>
             </div>
