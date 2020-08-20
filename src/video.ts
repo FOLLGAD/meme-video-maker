@@ -308,19 +308,26 @@ async function makeImageThing(
                             height
                         )
                     }
-                    let bruhh = await file({ postfix: ".png" })
-                    let stream = createWriteStream(bruhh.path)
-                    imageCanvas.createPNGStream().pipe(stream)
+                    // let bruhh = await file({ postfix: ".png" })
+                    // let stream = createWriteStream(bruhh.path)
+                    // imageCanvas.createPNGStream().pipe(stream)
+                    //
+                    // await new Promise((r) => stream.on("finish", r))
 
-                    await new Promise((r) => stream.on("finish", r))
-
-                    ffmpeg(bruhh.path)
-                        .inputOptions(["-loop 1"])
+                    ffmpeg(imageCanvas.createPNGStream())
+                        .input(
+                            "anullsrc=channel_layout=stereo:sample_rate=24000"
+                        )
+                        .inputOptions(["-f lavfi"])
                         .size("1920x1080")
                         .autopad()
                         .fps(25)
                         .videoCodec("libx264")
-                        .outputOptions([`-t ${pauseTime}`, "-pix_fmt yuv420p"])
+                        .audioCodec("aac")
+                        .audioFrequency(24000)
+                        .audioChannels(2)
+                        .duration(pauseTime)
+                        .outputOptions(["-pix_fmt yuv420p"])
                         .save(f.path)
                         .on("error", (err) =>
                             rej(
