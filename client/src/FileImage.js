@@ -186,7 +186,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     updateStage(ind, {
                         ...pipeline[ind],
                         text: newText,
-                        rect: pipeline[ind].rect,
+                        rect: [...pipeline[ind].rect, blocks[found].rect],
                     })
                 }
             } else {
@@ -194,7 +194,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     type: "read",
                     _index: found,
                     text: blocks[found].text.toLowerCase(),
-                    rect: blocks[found].rect,
+                    rect: [blocks[found].rect],
                     blockuntil: false,
                     reveal: true,
                 })

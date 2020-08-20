@@ -17,7 +17,7 @@ export interface Rec {
 
 export interface ReadStage {
     type: "read"
-    rect: Rec
+    rect: Rec[]
     text: string
     reveal: boolean
     blockuntil: boolean
@@ -184,13 +184,12 @@ async function makeImageThing(
         if (stage.type === "read") {
             if (stage.reveal) {
                 // Clear text
-                ctx.clearRect(0, 0, width, stage.rect.y + stage.rect.height)
+                stage.rect.forEach((rect) =>
+                    ctx.clearRect(0, 0, width, rect.y + rect.height)
+                )
             } else {
-                ctx.clearRect(
-                    stage.rect.x,
-                    stage.rect.y,
-                    stage.rect.width,
-                    stage.rect.height
+                stage.rect.forEach((rect) =>
+                    ctx.clearRect(rect.x, rect.y, rect.width, rect.height)
                 )
             }
 
@@ -227,51 +226,19 @@ async function makeImageThing(
                                 s.type === "read" && s.blockuntil
                         )
                         .forEach(({ rect }) => {
-                            imageCanvCtx.fillRect(
-                                rect.x,
-                                rect.y,
-                                rect.width,
-                                rect.height
+                            rect.forEach((r) =>
+                                imageCanvCtx.fillRect(
+                                    r.x,
+                                    r.y,
+                                    r.width,
+                                    r.height
+                                )
                             )
                         })
 
                     createFfmpeg()
                         .input(imageCanvas.createPNGStream())
                         .input(speechFile)
-                        // .complexFilter(
-                        //     [
-                        //         // Overlay the imageCanvas ontop of the image
-                        //         "[0:v][1:v]overlay=0:0[overlaid]",
-                        //         // {
-                        //         //     // inputs: ["padded", "1"],
-                        //         //     filter: "overlay",
-                        //         //     options: { x: 0, y: 0 },
-                        //         //     outputs: "overlaid",
-                        //         // },
-                        //         {
-                        //             inputs: "overlaid",
-                        //             filter: "scale",
-                        //             options: {
-                        //                 w: 1920,
-                        //                 h: 1080,
-                        //                 force_original_aspect_ratio: 1,
-                        //             },
-                        //             outputs: "scaled",
-                        //         },
-                        //         {
-                        //             inputs: "scaled",
-                        //             filter: "pad",
-                        //             options: [
-                        //                 1280,
-                        //                 720,
-                        //                 "(ow-iw)/2",
-                        //                 "(oh-ih)/2",
-                        //             ],
-                        //             outputs: "padded",
-                        //         },
-                        //     ],
-                        //     "padded"
-                        // )
                         .save(f.path)
                         .on("error", (err) =>
                             rej(
@@ -290,7 +257,6 @@ async function makeImageThing(
             }
         } else if (stage.type === "pause") {
             const pauseTime = Math.min(Math.abs(stage.secs), 10)
-            console.log("pausing for", pauseTime, "seconds")
             try {
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
@@ -308,14 +274,11 @@ async function makeImageThing(
                             height
                         )
                     }
-                    // let bruhh = await file({ postfix: ".png" })
-                    // let stream = createWriteStream(bruhh.path)
-                    // imageCanvas.createPNGStream().pipe(stream)
-                    //
-                    // await new Promise((r) => stream.on("finish", r))
 
                     ffmpeg(imageCanvas.createPNGStream())
                         .input(
+                            // Insert an empty audio stream, otherwise the
+                            // pauses fuck up the rest of the vid
                             "anullsrc=channel_layout=stereo:sample_rate=24000"
                         )
                         .inputOptions(["-f lavfi"])
