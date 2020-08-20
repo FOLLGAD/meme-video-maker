@@ -27,6 +27,7 @@
     "koa-body": "^4.2.0",
     "koa-bodyparser": "^4.3.0",
     "koa-router": "^9.1.0",
+    "latinize": "^0.4.1",
     "node-fetch": "^2.6.0",
     "tmp": "^0.2.1",
     "tmp-promise": "^3.0.2",

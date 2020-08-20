@@ -4,6 +4,7 @@ import fs = require("fs")
 import { makeCall } from "./daniel"
 import { spawn } from "child_process"
 import tmp = require("tmp")
+import latinize = require("latinize")
 
 import textToSpeech = require("@google-cloud/text-to-speech")
 const client = new textToSpeech.TextToSpeechClient({})
@@ -22,6 +23,8 @@ export function synthSpeech({
     text: string
     voice: string
 }): Promise<string> {
+    text = latinize(text)
+
     if (text.trim().length === 0) {
         // If no letter or number is in text, don't produce it
         return new Promise((_, rej) =>
