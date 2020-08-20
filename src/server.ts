@@ -36,7 +36,7 @@ const uploadDir = tmp.dirSync()
 import koaMultiBody = require("koa-body")
 const koaBody = koaMultiBody({
     multipart: true,
-    formidable: { uploadDir: uploadDir.path },
+    formidable: { uploadDir: uploadDir.path, keepExtensions: true },
 })
 
 import koaBodyParser = require("koa-bodyparser")

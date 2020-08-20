@@ -64,8 +64,8 @@ export default function Edit({ res, images, onFinish }) {
 
     const drawBlocks = useMemo(() => {
         const draw = res.map((obj) => {
-            const blocks = obj[0].fullTextAnnotation
-                ? obj[0].fullTextAnnotation.pages[0].blocks
+            const blocks = obj.fullTextAnnotation
+                ? obj.fullTextAnnotation.pages[0].blocks
                 : []
             return blocks.map(mapBlock)
         })
