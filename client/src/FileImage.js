@@ -137,6 +137,8 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             event
         ).map((p) => p / scale)
 
+        if (!mouseDownAt) return
+
         const [fromX, fromY] = mouseDownAt
         setHighlight(null)
 

@@ -16,7 +16,12 @@ function arrayMove(arr1, old_index, new_index) {
 export default function ({ setPipeline, pipeline, highlight }) {
     const renderStage = (stage, i) => {
         return (
-            <div style={{ background: highlight === i ? "aliceblue" : "#eee" }}>
+            <div
+                style={{
+                    background: highlight === i ? "aliceblue" : "#eee",
+                    marginBottom: 5,
+                }}
+            >
                 {renderInnerStage(stage, i)}
                 <div>
                     <span style={{ marginRight: 3 }}>{i + 1}</span>
