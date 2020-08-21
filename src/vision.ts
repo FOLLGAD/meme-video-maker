@@ -47,6 +47,11 @@ export async function readImages(imageObject: ImageObject[]): Promise<any[]> {
             })),
         })
     )
-    const came = flat(await Promise.all(promises))
+    const responseChunks = await Promise.all(promises)
+    const came = flat(
+        responseChunks.map((r) =>
+            r[0] && r[0].responses ? r[0].responses : []
+        )
+    )
     return came
 }
