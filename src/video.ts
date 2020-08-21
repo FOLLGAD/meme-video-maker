@@ -253,6 +253,7 @@ async function makeImageThing(
         imageCanvCtx.clearRect(0, 0, width, height)
         // Draw source
         imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+        // Do not draw if on last stage and stage isn't read
         if (i < pipeline.length - 1 || stage.type !== "read") {
             // Draw blockage
             imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
