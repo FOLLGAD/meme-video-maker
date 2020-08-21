@@ -15,18 +15,38 @@ interface ImageObject {
 // Vision client
 const client = new vision.ImageAnnotatorClient({ clientOptions: {} })
 
-export async function readImages(imageObject: ImageObject[]) {
+// https://ourcodeworld.com/articles/read/278/how-to-split-an-array-into-chunks-of-the-same-size-easily-in-javascript
+function chunkArray<T>(myArray: T[], chunk_size: number): T[][] {
+    let tempArray: T[][] = []
+
+    for (let index = 0; index < myArray.length; index += chunk_size) {
+        let myChunk = myArray.slice(index, index + chunk_size)
+        tempArray.push(myChunk)
+    }
+
+    return tempArray
+}
+
+function flat<T>(arr: T[][]): T[] {
+    return arr.reduce((flat, val) => flat.concat(val), [])
+}
+
+export async function readImages(imageObject: ImageObject[]): Promise<any[]> {
     // TODO: use { image: { source: "http://dsa.com/dsa.png" } }
     // linking directly to the S3 store where the imgs are held
     // requests: [{ image: { source: string } }]
     // Can also group everything into one single request??
-    const [res] = await client.batchAnnotateImages({
-        requests: imageObject.map((i) => ({
-            features: [{ type: "TEXT_DETECTION" }],
-            image: { content: readFileSync(i.image) },
-            // To avoid english chars showing up as cyrillic:
-            imageContext: { languageHints: ["en"] },
-        })),
-    })
-    return res.responses
+    const chunks = chunkArray(imageObject, 10) // Maximum maybe is 16??? but 10 to be safe
+    const promises = chunks.map((images) =>
+        client.batchAnnotateImages({
+            requests: images.map((i) => ({
+                features: [{ type: "TEXT_DETECTION" }],
+                image: { content: readFileSync(i.image) },
+                // To avoid english chars showing up as cyrillic:
+                imageContext: { languageHints: ["en"] },
+            })),
+        })
+    )
+    const came = flat(await Promise.all(promises))
+    return came
 }
