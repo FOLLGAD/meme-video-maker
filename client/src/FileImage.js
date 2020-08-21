@@ -229,10 +229,10 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
     return (
         <div style={{ display: "flex" }}>
-            <div style={{ display: "flex", flexDirection: "column" }}></div>
             <div>
                 <canvas ref={canvasRef} />
             </div>
+            <div style={{ paddingRight: 5, paddingLeft: 5 }}></div>
             <div>
                 <div>
                     <button

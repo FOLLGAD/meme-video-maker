@@ -17,9 +17,14 @@ export default function ({ setPipeline, pipeline, highlight }) {
     const renderStage = (stage, i) => {
         return (
             <div
+                className="pipeline-stage"
                 style={{
-                    background: highlight === i ? "aliceblue" : "#eee",
-                    marginBottom: 5,
+                    background:
+                        highlight === i ? "aliceblue" : "rgb(235, 235, 235)",
+                    marginBottom: 10,
+                    borderRadius: 4,
+                    boxShadow: "0 2px 3px #ccc",
+                    padding: "2px 2px 4px 2px",
                 }}
             >
                 {renderInnerStage(stage, i)}
