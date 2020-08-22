@@ -188,7 +188,6 @@ export async function makeVids(
             )
         )
 
-    console.log(vidsFull)
     let vidPath = out
     if (vidsFull.length > 1) {
         // If has outro or intro
@@ -239,14 +238,15 @@ async function makeImageThing(
                     blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
                 )
             } else {
-                stage.rect.forEach((rect) =>
-                    blockingCtx.clearRect(
-                        rect.x,
-                        rect.y,
-                        rect.width,
-                        rect.height
-                    )
-                )
+                // Reveal text-blocks still?
+                // stage.rect.forEach((rect) =>
+                //     blockingCtx.clearRect(
+                //         rect.x,
+                //         rect.y,
+                //         rect.width,
+                //         rect.height
+                //     )
+                // )
             }
         }
 
