@@ -1,7 +1,7 @@
 // This file is for the Oddcast API calls
 
 import fetch from "node-fetch"
-import crypto = require("crypto")
+import * as crypto from "crypto"
 
 function getMd5Hash(string: string) {
     let md5Sum = crypto.createHash("md5")

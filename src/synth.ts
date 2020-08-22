@@ -1,12 +1,12 @@
 // This file is for the tts calls
 
-import fs = require("fs")
+import * as fs from "fs"
 import { makeCall } from "./daniel"
 import { spawn } from "child_process"
-import tmp = require("tmp")
-import latinize = require("latinize")
+import * as tmp from "tmp"
+import * as latinize from "latinize"
 
-import textToSpeech = require("@google-cloud/text-to-speech")
+import * as textToSpeech from "@google-cloud/text-to-speech"
 const client = new textToSpeech.TextToSpeechClient({})
 
 const defaultVoiceSettings = {

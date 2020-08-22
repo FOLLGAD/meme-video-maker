@@ -5,16 +5,16 @@ import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
 import { Pipeline, makeVids, normalizeVideo } from "./video"
 import { readImages } from "./vision"
-import Koa = require("koa")
-import Router = require("koa-router")
-import tmp = require("tmp")
-import cors = require("@koa/cors")
+import * as Koa from "koa"
+import * as Router from "koa-router"
+import * as tmp from "tmp"
+import * as cors from "@koa/cors"
 
 // Load env variables
 require("dotenv").config()
 
 // AWS
-import AWS = require("aws-sdk")
+import * as AWS from "aws-sdk"
 
 // AWS S3
 const s3 = new AWS.S3()
@@ -33,13 +33,13 @@ const dbThemeName = "4chan-themes"
 
 // setup multipart upload for koa
 const uploadDir = tmp.dirSync()
-import koaMultiBody = require("koa-body")
+import * as koaMultiBody from "koa-body"
 const koaBody = koaMultiBody({
     multipart: true,
     formidable: { uploadDir: uploadDir.path, keepExtensions: true },
 })
 
-import koaBodyParser = require("koa-bodyparser")
+import * as koaBodyParser from "koa-bodyparser"
 const bodyParser = koaBodyParser()
 
 const app = new Koa()
