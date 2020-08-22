@@ -1,1 +1,1 @@
-export let standardPause = 1
+export let standardPause = 1.3
