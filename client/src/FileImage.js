@@ -218,6 +218,21 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             })
     }, [blocks, src, ctx, pipeline, highlight])
 
+    const divRef = useRef()
+
+    useEffect(() => {
+        const stop = (e) => {
+            e.stopPropagation()
+            setMouseDownAt(null)
+        }
+        divRef.current.addEventListener("mousedown", stop)
+        divRef.current.addEventListener("mouseup", stop)
+        return () => {
+            divRef.current.removeEventListener("mousedown", stop)
+            divRef.current.removeEventListener("mouseup", stop)
+        }
+    }, [divRef])
+
     useEffect(() => {
         document.addEventListener("mousedown", onCanvasMouseDown)
         document.addEventListener("mouseup", onCanvasMouseUp)
@@ -261,11 +276,13 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         Reaveal full
                     </button>
                 </div>
-                <Pipeline
-                    pipeline={pipeline}
-                    setPipeline={setPipeline}
-                    highlight={highlight}
-                />
+                <div ref={divRef}>
+                    <Pipeline
+                        pipeline={pipeline}
+                        setPipeline={setPipeline}
+                        highlight={highlight}
+                    />
+                </div>
             </div>
         </div>
     )

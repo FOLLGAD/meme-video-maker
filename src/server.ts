@@ -152,7 +152,7 @@ async function makeVid(rawSet, pipeline: Pipeline[], images) {
     })
 }
 
-const parseFiles = (info, files): { id: number; image: string }[] => {
+const parseFiles = (info: any[], files): { id: number; image: string }[] => {
     // Special case when only one file is sent
     if (files.files.path) {
         return [{ id: 0, image: files.files.path }]
