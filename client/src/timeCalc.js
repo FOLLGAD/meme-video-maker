@@ -4,7 +4,8 @@ export function estimateComment(splits, words) {
 }
 
 export function estimateTime(pipelines) {
-    const totalTime = pipelines
+    const pipes = pipelines.filter((p) => p.length > 0)
+    const totalTime = pipes
         .map((pipeline) => {
             const { pause, splits, words } = pipeline.reduce(
                 (acc, stage) => {
@@ -26,7 +27,7 @@ export function estimateTime(pipelines) {
         })
         .reduce((acc, val) => acc + val, 0)
 
-    const transitions = pipelines.length - 1 * 0.4
+    const transitions = Math.max(pipes.length - 1, 0) * 0.4
 
     return totalTime + transitions
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import Pipeline from "./Pipeline"
-import { standardPause } from "./constants"
+import { standardPause, shortPause } from "./constants"
+import { Card } from "semantic-ui-react"
 
 // Gets the mouse click position within the canvas
 function getCursorPosition(canvas, event) {
@@ -11,6 +12,12 @@ function getCursorPosition(canvas, event) {
 }
 
 let counter = 0
+
+const rectContainsRect = (bigRect, smallRect) =>
+    bigRect.x <= smallRect.x &&
+    bigRect.y <= smallRect.y &&
+    bigRect.x + bigRect.width >= smallRect.x + smallRect.width &&
+    bigRect.y + bigRect.height >= smallRect.y + smallRect.height
 
 const isInRect = (rect, x, y) =>
     x >= rect.x &&
@@ -52,6 +59,8 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
     const indexIsEnabled = (i) =>
         pipeline.some((s) => s.type === "read" && s._index === i)
+    const indexIsAdded = (i) =>
+        pipeline.some((s) => s.type === "read" && s.added.includes(i))
 
     const drawOverlay = () => {
         // Draw reveal blocks
@@ -87,8 +96,11 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
         // Draw reading blocks
         blocks.forEach(({ rect: { x, y, width, height } }, i) => {
-            const enabled = indexIsEnabled(i)
-            ctx.strokeStyle = enabled ? "lightgreen" : "tomato"
+            ctx.strokeStyle = indexIsEnabled(i)
+                ? "lightgreen"
+                : indexIsAdded(i)
+                ? "lightblue"
+                : "tomato"
             ctx.lineWidth = 2
             ctx.strokeRect(x, y, width, height)
         })
@@ -106,6 +118,12 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
     const addStage = (stage) =>
         setPipeline([...pipeline, { ...stage, id: counter++ }])
+
+    const addStages = (stages) =>
+        setPipeline([
+            ...pipeline,
+            ...stages.map((stage) => ({ ...stage, id: counter++ })),
+        ])
 
     const removeStage = (index) => {
         pipeline.splice(index, 1)
@@ -158,7 +176,29 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             return
 
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
-            return addStage({ type: "reveal", rect })
+            let arr = []
+            if (shiftDown) {
+                const rs = blocks
+                    .map((a, i) => [a, i])
+                    .filter(([r, _]) => rectContainsRect(rect, r.rect))
+                    .filter(([_, i]) => !indexIsEnabled(i))
+
+                rs.forEach(([block, i]) =>
+                    arr.push({
+                        type: "read",
+                        _index: i,
+                        text: block.text.toLowerCase(),
+                        rect: [block.rect],
+                        blockuntil: false,
+                        reveal: false,
+                        added: [],
+                    })
+                )
+            }
+
+            arr.push({ type: "reveal", rect })
+
+            return addStages(arr)
         }
 
         const found = blocks.findIndex(({ rect }) =>
@@ -179,8 +219,8 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     .reverse()
                     .findIndex((s) => s.type === "read")
 
-                if (revInd !== -1) {
-                    const ind = pipeline.length - 1 - revInd
+                const ind = pipeline.length - 1 - revInd
+                if (revInd !== -1 && !pipeline[ind].added.includes(found)) {
                     const newText =
                         pipeline[ind].text +
                         " " +
@@ -189,6 +229,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         ...pipeline[ind],
                         text: newText,
                         rect: [...pipeline[ind].rect, blocks[found].rect],
+                        added: [...pipeline[ind].added, found],
                     })
                 }
             } else {
@@ -199,6 +240,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     rect: [blocks[found].rect],
                     blockuntil: false,
                     reveal: true,
+                    added: [],
                 })
             }
         }
@@ -243,47 +285,74 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
     }, [mouseDownAt, pipeline, scale])
 
     return (
-        <div style={{ display: "flex" }}>
+        <div style={{ display: "flex", userSelect: "none" }}>
             <div>
                 <canvas ref={canvasRef} />
             </div>
             <div style={{ paddingRight: 5, paddingLeft: 5 }}></div>
-            <div>
-                <div>
-                    <button
-                        onClick={() =>
-                            addStage({ type: "pause", secs: standardPause })
-                        }
-                    >
-                        Add pause
-                    </button>
-                    <button onClick={() => addStage({ type: "gif", times: 1 })}>
-                        Play GIF
-                    </button>
-                    <button
-                        onClick={() =>
-                            addStage({
-                                type: "reveal",
-                                rect: {
-                                    x: 0,
-                                    y: 0,
-                                    width: canvasRef.current.width / scale,
-                                    height: canvasRef.current.height / scale,
-                                },
-                            })
-                        }
-                    >
-                        Reaveal full
-                    </button>
-                </div>
-                <div ref={divRef}>
-                    <Pipeline
-                        pipeline={pipeline}
-                        setPipeline={setPipeline}
-                        highlight={highlight}
-                    />
-                </div>
-            </div>
+            <Card>
+                <Card.Content>
+                    <div>
+                        <button
+                            onClick={() =>
+                                addStage({ type: "pause", secs: standardPause })
+                            }
+                        >
+                            Long pause
+                        </button>
+                        <button
+                            onClick={() =>
+                                addStage({ type: "pause", secs: shortPause })
+                            }
+                        >
+                            Short pause
+                        </button>
+                        <button
+                            onClick={() => addStage({ type: "gif", times: 1 })}
+                        >
+                            Play GIF
+                        </button>
+                        <button
+                            onClick={() =>
+                                addStage({
+                                    type: "reveal",
+                                    rect: {
+                                        x: 0,
+                                        y: 0,
+                                        width: canvasRef.current.width / scale,
+                                        height:
+                                            canvasRef.current.height / scale,
+                                    },
+                                })
+                            }
+                        >
+                            Reaveal full
+                        </button>
+                        <button
+                            onClick={() =>
+                                addStage({
+                                    type: "read",
+                                    text: "",
+                                    blockuntil: false,
+                                    reveal: false,
+                                    _index: null,
+                                    added: [],
+                                    rect: [],
+                                })
+                            }
+                        >
+                            TTS
+                        </button>
+                    </div>
+                    <div ref={divRef}>
+                        <Pipeline
+                            pipeline={pipeline}
+                            setPipeline={setPipeline}
+                            highlight={highlight}
+                        />
+                    </div>
+                </Card.Content>
+            </Card>
         </div>
     )
 }

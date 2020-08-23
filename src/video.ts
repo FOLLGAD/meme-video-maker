@@ -285,7 +285,7 @@ async function makeImageThing(
                         .input(imageCanvas.createPNGStream())
                         .inputOptions(["-stream_loop -1"])
                         .input(speechFile)
-                        .size(`${outWidth}x${outHeight}`)
+                        .size(getResString(outWidth, outHeight))
                         .autopad()
                         .fps(25)
                         .videoCodec("libx264")
@@ -331,7 +331,7 @@ async function makeImageThing(
                             "anullsrc=cl=stereo:r=24000"
                         )
                         .inputOptions(["-f lavfi"])
-                        .size(`${outWidth}x${outHeight}`)
+                        .size(getResString(outWidth, outHeight))
                         .autopad()
                         .fps(25)
                         .videoCodec("libx264")
@@ -369,11 +369,20 @@ async function makeImageThing(
                 let f = await file({ postfix: ".mp4" })
 
                 ffmpeg(image)
-                    .size("1920x1080")
+                    .input(
+                        // Insert an empty audio stream, otherwise the
+                        // pauses fuck up the rest of the vid
+                        "anullsrc=cl=stereo:r=24000"
+                    )
+                    .inputOptions(["-f lavfi"])
+                    .audioCodec("aac")
+                    .audioFrequency(24000)
+                    .audioChannels(2)
+                    .size(getResString(outWidth, outHeight))
                     .autopad()
                     .videoCodec("libx264")
                     .fps(25)
-                    .outputOptions(["-pix_fmt yuv420p"])
+                    .outputOptions(["-pix_fmt yuv420p", "-shortest"])
                     .save(f.path)
                     .on("error", (err) =>
                         rej(

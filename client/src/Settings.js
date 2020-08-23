@@ -4,7 +4,7 @@ import Modal from "react-modal"
 
 Modal.setAppElement("#root")
 
-export default function ({ settings, dispatchSettings, onSubmit }) {
+export default function ({ settings, pipeline, dispatchSettings, onSubmit }) {
     const [files, setFiles] = useState({ videos: [], songs: [] })
     const [themes, setThemes] = useState([])
 
@@ -81,6 +81,9 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
         { width: 1920, height: 1080 },
         { width: 1080, height: 1920 },
     ]
+
+    const [useRange, setUseRange] = useState(false)
+    const [range, setRange] = useState(pipeline.length || 0)
 
     return (
         <div style={{ display: "flex" }} className="container">
@@ -178,6 +181,24 @@ export default function ({ settings, dispatchSettings, onSubmit }) {
                                 </option>
                             ))}
                         </select>
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={useRange}
+                            onChange={(e) => setUseRange(e.target.checked)}
+                        />
+                        Select range
+                    </label>
+                    <label>
+                        <input
+                            type="number"
+                            value={range}
+                            placeholder="Render up until..."
+                            onChange={(e) => setRange(e.target.valueAsNumber)}
+                        />
                     </label>
                 </div>
 

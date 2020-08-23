@@ -151,6 +151,7 @@ export default function Edit({ res, images, onFinish }) {
                     <Settings
                         settings={settings}
                         onSubmit={onSubmit}
+                        pipeline={pipeline}
                         dispatchSettings={dispatchSettings}
                     />
                     <button onClick={() => setStage(0)}>Back</button>
@@ -162,12 +163,36 @@ export default function Edit({ res, images, onFinish }) {
                         display: "flex",
                         alignItems: "center",
                         flexDirection: "column",
+                        userSelect: "none",
                     }}
                 >
                     {btns}
 
                     <div>
-                        <div>{estimatedTime}</div>
+                        <div
+                            style={{
+                                display: "flex",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    padding: 7,
+                                    background: "#eee",
+                                    margin: 5,
+                                }}
+                            >
+                                Number {index + 1} out of {pipeline.length}
+                            </div>
+                            <div
+                                style={{
+                                    padding: 7,
+                                    background: "#eee",
+                                    margin: 5,
+                                }}
+                            >
+                                Time: {estimatedTime}
+                            </div>
+                        </div>
                         <FileImage
                             key={img}
                             src={img}

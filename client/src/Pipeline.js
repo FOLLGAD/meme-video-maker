@@ -51,32 +51,36 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             }
                             value={stage.text}
                         ></textarea>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={stage.reveal}
-                                onChange={(e) =>
-                                    updateStage(i, {
-                                        ...stage,
-                                        reveal: e.target.checked,
-                                    })
-                                }
-                            />
-                            Auto reveal?
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={stage.blockuntil}
-                                onChange={(e) =>
-                                    updateStage(i, {
-                                        ...stage,
-                                        blockuntil: e.target.checked,
-                                    })
-                                }
-                            />
-                            Block text
-                        </label>
+                        {stage.rect.length > 0 && (
+                            <div>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={stage.reveal}
+                                        onChange={(e) =>
+                                            updateStage(i, {
+                                                ...stage,
+                                                reveal: e.target.checked,
+                                            })
+                                        }
+                                    />
+                                    Auto reveal?
+                                </label>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={stage.blockuntil}
+                                        onChange={(e) =>
+                                            updateStage(i, {
+                                                ...stage,
+                                                blockuntil: e.target.checked,
+                                            })
+                                        }
+                                    />
+                                    Block text
+                                </label>
+                            </div>
+                        )}
                     </div>
                 )
             case "pause":
