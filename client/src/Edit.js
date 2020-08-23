@@ -174,24 +174,10 @@ export default function Edit({ res, images, onFinish }) {
                                 display: "flex",
                             }}
                         >
-                            <div
-                                style={{
-                                    padding: 7,
-                                    background: "#eee",
-                                    margin: 5,
-                                }}
-                            >
+                            <div className="card">
                                 Number {index + 1} out of {pipeline.length}
                             </div>
-                            <div
-                                style={{
-                                    padding: 7,
-                                    background: "#eee",
-                                    margin: 5,
-                                }}
-                            >
-                                Time: {estimatedTime}
-                            </div>
+                            <div className="card">Time: {estimatedTime}</div>
                         </div>
                         <FileImage
                             key={img}

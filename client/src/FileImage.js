@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import Pipeline from "./Pipeline"
 import { standardPause, shortPause } from "./constants"
-import { Card } from "semantic-ui-react"
 
 // Gets the mouse click position within the canvas
 function getCursorPosition(canvas, event) {
@@ -177,6 +176,9 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
             let arr = []
+
+            arr.push({ type: "reveal", rect })
+
             if (shiftDown) {
                 const rs = blocks
                     .map((a, i) => [a, i])
@@ -195,8 +197,6 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     })
                 )
             }
-
-            arr.push({ type: "reveal", rect })
 
             return addStages(arr)
         }
@@ -290,69 +290,64 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 <canvas ref={canvasRef} />
             </div>
             <div style={{ paddingRight: 5, paddingLeft: 5 }}></div>
-            <Card>
-                <Card.Content>
-                    <div>
-                        <button
-                            onClick={() =>
-                                addStage({ type: "pause", secs: standardPause })
-                            }
-                        >
-                            Long pause
-                        </button>
-                        <button
-                            onClick={() =>
-                                addStage({ type: "pause", secs: shortPause })
-                            }
-                        >
-                            Short pause
-                        </button>
-                        <button
-                            onClick={() => addStage({ type: "gif", times: 1 })}
-                        >
-                            Play GIF
-                        </button>
-                        <button
-                            onClick={() =>
-                                addStage({
-                                    type: "reveal",
-                                    rect: {
-                                        x: 0,
-                                        y: 0,
-                                        width: canvasRef.current.width / scale,
-                                        height:
-                                            canvasRef.current.height / scale,
-                                    },
-                                })
-                            }
-                        >
-                            Reaveal full
-                        </button>
-                        <button
-                            onClick={() =>
-                                addStage({
-                                    type: "read",
-                                    text: "",
-                                    blockuntil: false,
-                                    reveal: false,
-                                    _index: null,
-                                    added: [],
-                                    rect: [],
-                                })
-                            }
-                        >
-                            TTS
-                        </button>
-                    </div>
-                    <div ref={divRef}>
-                        <Pipeline
-                            pipeline={pipeline}
-                            setPipeline={setPipeline}
-                            highlight={highlight}
-                        />
-                    </div>
-                </Card.Content>
-            </Card>
+            <div className="card">
+                <div style={{ marginBottom: 5 }}>
+                    <button
+                        onClick={() =>
+                            addStage({ type: "pause", secs: standardPause })
+                        }
+                    >
+                        Long pause
+                    </button>
+                    <button
+                        onClick={() =>
+                            addStage({ type: "pause", secs: shortPause })
+                        }
+                    >
+                        Short pause
+                    </button>
+                    <button
+                        onClick={() =>
+                            addStage({
+                                type: "reveal",
+                                rect: {
+                                    x: 0,
+                                    y: 0,
+                                    width: canvasRef.current.width / scale,
+                                    height: canvasRef.current.height / scale,
+                                },
+                            })
+                        }
+                    >
+                        Reveal full
+                    </button>
+                    <button
+                        onClick={() =>
+                            addStage({
+                                type: "read",
+                                text: "",
+                                blockuntil: false,
+                                reveal: false,
+                                _index: null,
+                                added: [],
+                                rect: [],
+                            })
+                        }
+                    >
+                        TTS
+                    </button>
+                    <button onClick={() => addStage({ type: "gif", times: 1 })}>
+                        Play GIF
+                    </button>
+                </div>
+                <div ref={divRef}>
+                    <Pipeline
+                        pipeline={pipeline}
+                        setPipeline={setPipeline}
+                        highlight={highlight}
+                    />
+                </div>
+            </div>
         </div>
     )
 }

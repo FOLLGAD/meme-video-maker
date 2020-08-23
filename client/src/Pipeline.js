@@ -24,7 +24,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                     marginBottom: 10,
                     borderRadius: 4,
                     boxShadow: "0 2px 3px #ccc",
-                    padding: "2px 2px 4px 2px",
+                    padding: 8,
                 }}
             >
                 {renderInnerStage(stage, i)}
