@@ -19,6 +19,10 @@ function mapBlock(block) {
                 .join(" ")
             // remove >>12321332 (OP), >>1232313 (You)
             parag = parag.replace(/>>\d+\s*(\(.+\))?/g, "").trim()
+            // replace l'll with I'll (google vision error)
+            parag = parag.replace(/l'll|l've|\Wl\W/g, (sub) =>
+                sub.replace("l", "I")
+            )
             return parag
         })
         .join("\n")
