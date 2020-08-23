@@ -182,6 +182,7 @@ export default function Edit({ res, images, onFinish }) {
                                 Number {index + 1} out of {pipeline.length}
                             </div>
                             <div className="card">Time: {estimatedTime}</div>
+                            <div className="card">Filetype: {img.type}</div>
                         </div>
                         <FileImage
                             key={img}

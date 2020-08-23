@@ -336,9 +336,13 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     >
                         TTS
                     </button>
-                    <button onClick={() => addStage({ type: "gif", times: 1 })}>
-                        Play GIF
-                    </button>
+                    {!["image/png", "image/jpeg"].includes(src.type) && (
+                        <button
+                            onClick={() => addStage({ type: "gif", times: 1 })}
+                        >
+                            Play GIF
+                        </button>
+                    )}
                 </div>
                 <div ref={divRef}>
                     <Pipeline
