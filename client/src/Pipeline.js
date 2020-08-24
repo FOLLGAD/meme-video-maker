@@ -27,7 +27,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                     padding: 8,
                 }}
             >
-                {renderInnerStage(stage, i)}
+                <div>{renderInnerStage(stage, i)}</div>
                 <div>
                     <span style={{ marginRight: 3 }}>{i + 1}</span>
                     <button onClick={() => removeStage(i)}>Delete</button>
