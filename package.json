@@ -15,10 +15,6 @@
         "@google-cloud/text-to-speech": "^3.0.0",
         "@google-cloud/vision": "^2.1.0",
         "@koa/cors": "^3.1.0",
-        "@types/fluent-ffmpeg": "^2.1.14",
-        "@types/koa": "^2.11.3",
-        "@types/koa-router": "^7.4.1",
-        "@types/uuid": "^8.0.0",
         "aws-sdk": "^2.725.0",
         "canvas": "^2.6.1",
         "dotenv": "^8.2.0",
@@ -34,6 +30,10 @@
         "uuid": "^8.3.0"
     },
     "devDependencies": {
+        "@types/fluent-ffmpeg": "^2.1.14",
+        "@types/koa": "^2.11.3",
+        "@types/koa-router": "^7.4.1",
+        "@types/uuid": "^8.0.0",
         "@types/node": "^14.0.23",
         "@types/node-fetch": "^2.5.7"
     }
