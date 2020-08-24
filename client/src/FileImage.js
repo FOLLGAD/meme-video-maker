@@ -335,7 +335,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         }
                         title="Manually add a tts voice line"
                     >
-                        TTS
+                        Custom TTS
                     </button>
                     {!["image/png", "image/jpeg"].includes(src.type) && (
                         <button

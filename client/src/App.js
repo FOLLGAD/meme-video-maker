@@ -54,11 +54,14 @@ function App() {
                 <div style={{ display: "flex" }}>
                     <div style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>
                         <div className="card">
-                            <h3>Upload image files</h3>
+                            <h3>Upload memes (png/jpg/gif)</h3>
                             <Upload setData={loadData} />
                         </div>
                         <div className="card">
-                            <h3>Upload intro/outro/transition/song</h3>
+                            <h3>
+                                Upload intro/outro/transition/song <br /> (for
+                                creating theme later)
+                            </h3>
                             <UploadTheme />
                         </div>
                     </div>
