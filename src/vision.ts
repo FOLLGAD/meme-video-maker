@@ -43,6 +43,7 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // Do it synchronously instead of parallelly, since it
     // gives problems with RESOURCE_EXCEEDED: Bandwidth exhausted
     for (const images of chunks) {
+        console.log("Reading chunk...")
         const res = await client.batchAnnotateImages({
             requests: images.map((i) => ({
                 features: [{ type: "TEXT_DETECTION" }],
@@ -53,8 +54,11 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
         })
         if (res[0]?.responses) {
             results.push(...res[0].responses)
+        } else {
+            console.log("Chunk came up empty")
         }
     }
+    console.log("Finished chunk")
 
     // const promises = chunks.map((images) =>
     //     client.batchAnnotateImages({
