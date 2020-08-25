@@ -41,7 +41,11 @@ export default function ({ setPipeline, pipeline, highlight }) {
                 return (
                     <div>
                         <textarea
-                            style={{ width: "100%" }}
+                            style={{
+                                width: "100%",
+                                fontSize: 15,
+                                minWidth: 300,
+                            }}
                             rows="3"
                             onChange={(e) =>
                                 updateStage(i, {
@@ -100,6 +104,18 @@ export default function ({ setPipeline, pipeline, highlight }) {
                                 })
                             }}
                         />
+                        {[0.5, 0.8, 1.3].map((s) => (
+                            <button
+                                onClick={() =>
+                                    updateStage(i, {
+                                        ...stage,
+                                        secs: s,
+                                    })
+                                }
+                            >
+                                {s.toString()}
+                            </button>
+                        ))}
                     </div>
                 )
             case "reveal":

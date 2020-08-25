@@ -74,19 +74,24 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 const margin = 10
                 const size = 50
                 ctx.fillStyle = "#000000ee"
-                ctx.fillRect(
-                    rect.x + rect.width - size - margin,
-                    rect.y + margin,
-                    size,
-                    size
-                )
+                const blackBox = {
+                    x: Math.min(
+                        rect.x + rect.width - size - margin,
+                        canvasRef.current.width / scale - size
+                    ),
+                    y: Math.min(
+                        rect.y + margin,
+                        canvasRef.current.height / scale - size
+                    ),
+                }
+                ctx.fillRect(blackBox.x, blackBox.y, size, size)
                 ctx.fillStyle = "white"
                 ctx.font = "50px sans-serif"
                 ctx.textAlign = "center"
                 ctx.textBaseline = "middle"
                 ctx.fillText(
                     `${i + 1}`,
-                    rect.x + rect.width - size / 2 - margin,
+                    blackBox.x + size / 2,
                     rect.y + margin + size / 2 + 10,
                     size
                 )
@@ -297,14 +302,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                             addStage({ type: "pause", secs: standardPause })
                         }
                     >
-                        Long pause
-                    </button>
-                    <button
-                        onClick={() =>
-                            addStage({ type: "pause", secs: shortPause })
-                        }
-                    >
-                        Short pause
+                        Pause
                     </button>
                     <button
                         onClick={() =>
