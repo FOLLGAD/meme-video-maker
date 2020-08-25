@@ -209,6 +209,8 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 )
             }
 
+            arr.push({ type: "pause", secs: standardPause })
+
             return addStages(arr)
         }
 
