@@ -75,13 +75,19 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 const size = 50
                 ctx.fillStyle = "#000000ee"
                 const blackBox = {
-                    x: Math.min(
-                        rect.x + rect.width - size - margin,
-                        canvasRef.current.width / scale - size
+                    x: Math.max(
+                        0,
+                        Math.min(
+                            rect.x + rect.width - size - margin,
+                            canvasRef.current.width / scale - size
+                        )
                     ),
-                    y: Math.min(
-                        rect.y + margin,
-                        canvasRef.current.height / scale - size
+                    y: Math.max(
+                        0,
+                        Math.min(
+                            rect.y + margin,
+                            canvasRef.current.height / scale - size
+                        )
                     ),
                 }
                 ctx.fillRect(blackBox.x, blackBox.y, size, size)
@@ -92,7 +98,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 ctx.fillText(
                     `${i + 1}`,
                     blackBox.x + size / 2,
-                    rect.y + margin + size / 2 + 10,
+                    blackBox.y + size / 2 + 10,
                     size
                 )
             }
