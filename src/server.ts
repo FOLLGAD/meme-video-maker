@@ -384,6 +384,17 @@ router
         }
     })
 
-app.use(router.routes())
+// Error handling
+app.use(async (ctx, next) => {
+    try {
+        await next()
+    } catch (err) {
+        ctx.status = err.statusCode || err.status || 500
+        ctx.body = err.message
+        ctx.app.emit("error", err, ctx)
+    }
+})
+
+app.use(router.routes()).use(router.allowedMethods())
 
 app.listen(7000, () => console.log("Listening right now on port 7000"))

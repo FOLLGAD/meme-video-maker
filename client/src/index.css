@@ -1,111 +1,115 @@
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  box-sizing: border-box;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
 }
 
 button,
 input[type="button"],
 input[type="submit"] {
-  background-color: white;
-  margin-bottom: 3px;
-  border: thin solid #eee;
-  border-radius: 5px;
-  padding: 5px 8px;
-  box-shadow: #ddd 0 1px 1px 0px;
+    background-color: white;
+    margin-bottom: 3px;
+    border: thin solid #eee;
+    border-radius: 5px;
+    padding: 5px 8px;
+    box-shadow: #ddd 0 1px 1px 0px;
 }
 button:hover,
 input[type="button"]:hover,
 input[type="submit"]:hover {
-  background-color: #eee;
-  margin-bottom: 3px;
-  border: thin solid #eee;
-  border-radius: 5px;
-  padding: 5px 8px;
+    background-color: #eee;
+    margin-bottom: 3px;
+    border: thin solid #eee;
+    border-radius: 5px;
+    padding: 5px 8px;
 }
 button:active,
 input[type="button"]:active,
 input[type="submit"]:active {
-  position: relative;
-  top: 1px;
+    position: relative;
+    top: 1px;
 }
 
 * {
-  box-sizing: inherit;
+    box-sizing: inherit;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
 }
 
 h1,
 h2,
 h3 {
-  padding-top: 0px;
-  margin-top: 0px;
+    padding-top: 0px;
+    margin-top: 0px;
 }
 
 .app {
-  display: flex;
-  justify-content: center;
-  padding: 15px;
+    display: flex;
+    justify-content: center;
+    padding: 15px;
 }
 
 .theme:hover {
-  background: #eee;
-  /* border: solid 1px #ccc; */
+    background: #eee;
+    /* border: solid 1px #ccc; */
 }
 
 .theme {
-  padding: 6px 10px;
-  border: solid 1px #00000000;
-  cursor: pointer;
+    padding: 6px 10px;
+    border: solid 1px #00000000;
+    cursor: pointer;
 }
 
 .themes {
-  margin-bottom: 10px;
+    margin-bottom: 10px;
 }
 
 .container {
-  min-width: 600px;
+    min-width: 600px;
 }
 
 .delete {
-  cursor: pointer;
-  float: right;
+    cursor: pointer;
+    float: right;
 }
 
 .card {
-  box-shadow: #ddd 0 1px 5px 1px;
-  border-radius: 3px;
-  padding: 10px;
-  margin: 20px;
+    box-shadow: #ddd 0 1px 5px 1px;
+    border-radius: 3px;
+    padding: 10px;
+    margin: 20px;
 }
 
 .videolist .video {
-  margin-bottom: 3px;
-  border: thin solid #eee;
-  border-radius: 5px;
-  padding: 5px 8px;
+    margin-bottom: 3px;
+    border: thin solid #eee;
+    border-radius: 5px;
+    padding: 5px 8px;
 }
 .videolist .video:hover {
-  background: rgb(240, 240, 240);
+    background: rgb(240, 240, 240);
 }
 .videolist a {
-  text-decoration: none;
-  color: #222;
+    text-decoration: none;
+    color: #222;
 }
 
 .videolist a:visited {
-  color: #777;
-  border-color: aqua;
+    color: #777;
+    border-color: aqua;
 }
 
 .pipline-stage {
-  border-radius: 5px;
+    border-radius: 5px;
+}
+
+.divide {
+    border-bottom: 1px solid #ececec;
 }

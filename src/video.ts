@@ -427,6 +427,8 @@ function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
             .inputFPS(25)
             .videoCodec("copy")
             .audioCodec("copy")
+            .outputOptions(["-pix_fmt yuv420p"])
+            .audioChannels(2)
             .fps(25)
             .on("end", () => {
                 res()

@@ -4,13 +4,18 @@ import apiFetch from "./apiFetch"
 export default function Form({ setData }) {
     const filesInp = useRef(null)
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(false)
 
     const submit = (event) => {
         event.preventDefault()
-        setLoading(true)
 
         const fd = new FormData()
         const files = filesInp.current.files
+        if (files.length === 0) {
+            return
+        }
+        setLoading(true)
+        setError(null)
 
         // Append files to formdata
         const info = []
@@ -32,6 +37,10 @@ export default function Form({ setData }) {
                 setLoading(false)
                 setData({ res: d, images: files })
             })
+            .catch((d) => {
+                setLoading(false)
+                setError(d.message)
+            })
     }
 
     return (
@@ -46,6 +55,7 @@ export default function Form({ setData }) {
                         multiple
                     />
                 </div>
+                <div>{error}</div>
                 <div style={{ paddingTop: 10 }}>
                     <button type="submit" onClick={submit}>
                         {loading ? "Loading..." : "Go"}
