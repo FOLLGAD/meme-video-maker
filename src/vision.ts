@@ -31,14 +31,19 @@ function flat<T>(arr: T[][]): T[] {
     return arr.reduce((flat, val) => flat.concat(val), [])
 }
 
-export async function readImages(imageObject: ImageObject[]): Promise<any[]> {
+export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // TODO: use { image: { source: "http://dsa.com/dsa.png" } }
     // linking directly to the S3 store where the imgs are held
     // requests: [{ image: { source: string } }]
     // Can also group everything into one single request??
-    const chunks = chunkArray(imageObject, 10) // Maximum maybe is 16??? but 10 to be safe
-    const promises = chunks.map((images) =>
-        client.batchAnnotateImages({
+    const chunks = chunkArray(imageObjects, 10) // Maximum maybe is 16??? but 10 to be safe
+
+    const results: any[] = []
+
+    // Do it synchronously instead of parallelly, since it
+    // gives problems with RESOURCE_EXCEEDED: Bandwidth exhausted
+    for (const images of chunks) {
+        const res = await client.batchAnnotateImages({
             requests: images.map((i) => ({
                 features: [{ type: "TEXT_DETECTION" }],
                 image: { content: readFileSync(i.image) },
@@ -46,12 +51,26 @@ export async function readImages(imageObject: ImageObject[]): Promise<any[]> {
                 imageContext: { languageHints: ["en"] },
             })),
         })
-    )
-    const responseChunks = await Promise.all(promises)
-    const came = flat(
-        responseChunks.map((r) =>
-            r[0] && r[0].responses ? r[0].responses : []
-        )
-    )
-    return came
+        if (res[0]?.responses) {
+            results.push(...res[0].responses)
+        }
+    }
+
+    // const promises = chunks.map((images) =>
+    //     client.batchAnnotateImages({
+    //         requests: images.map((i) => ({
+    //             features: [{ type: "TEXT_DETECTION" }],
+    //             image: { content: readFileSync(i.image) },
+    //             // To avoid english chars showing up as cyrillic:
+    //             imageContext: { languageHints: ["en"] },
+    //         })),
+    //     })
+    // )
+    // const responseChunks = await Promise.all(promises)
+    // const results = flat(
+    //     responseChunks.map((r) =>
+    //         r[0] && r[0].responses ? r[0].responses : []
+    //     )
+    // )
+    return results
 }
