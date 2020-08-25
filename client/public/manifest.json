@@ -1,10 +1,9 @@
 {
-  "short_name": "4Chan app",
-  "name": "4Chan",
-  "icons": [
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+    "short_name": "Carp app",
+    "name": "carp",
+    "icons": [],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#000000",
+    "background_color": "#ffffff"
 }
