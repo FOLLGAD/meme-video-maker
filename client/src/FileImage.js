@@ -223,7 +223,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 )
             }
 
-            arr.push({ type: "pause", secs: standardPause })
+            arr.push({ type: "pause", secs: 0.0 })
 
             arr.push({ type: "div" })
 
