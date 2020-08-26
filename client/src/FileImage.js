@@ -63,11 +63,11 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
     const drawOverlay = () => {
         // Draw reveal blocks
-        pipeline.forEach((stage, i) => {
+        pipeline.forEach((stage) => {
             if (stage.type === "reveal") {
                 const { rect } = stage
                 ctx.fillStyle =
-                    highlight === i
+                    highlight === stage.id
                         ? "rgba(200, 200, 240, 0.4)"
                         : "rgba(200, 200, 200, 0.3)"
                 ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
@@ -96,7 +96,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                 ctx.textAlign = "center"
                 ctx.textBaseline = "middle"
                 ctx.fillText(
-                    `${i + 1}`,
+                    `${stage.id + 1}`,
                     blackBox.x + size / 2,
                     blackBox.y + size / 2 + 10,
                     size
@@ -127,7 +127,18 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
     }
 
     const addStage = (stage) =>
-        setPipeline([...pipeline, { ...stage, id: counter++ }])
+        stage.type === "reveal"
+            ? setPipeline([
+                  ...pipeline,
+                  { ...stage, id: counter++ },
+                  { type: "pause", id: counter++, secs: standardPause },
+                  { type: "div" },
+              ])
+            : setPipeline([
+                  ...pipeline,
+                  { ...stage, id: counter++ },
+                  { type: "div" },
+              ])
 
     const addStages = (stages) =>
         setPipeline([
@@ -135,8 +146,10 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             ...stages.map((stage) => ({ ...stage, id: counter++ })),
         ])
 
-    const removeStage = (index) => {
-        pipeline.splice(index, 1)
+    const removeStage = (id) => {
+        const index = pipeline.findIndex((p) => p.id === id)
+        const len = pipeline.slice(index).findIndex((t) => t.type === "div")
+        pipeline.splice(index, len + 1)
         setPipeline([...pipeline])
     }
 
@@ -186,6 +199,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             return
 
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
+            // Add a reveal rect
             let arr = []
 
             arr.push({ type: "reveal", rect })
@@ -211,6 +225,8 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
             arr.push({ type: "pause", secs: standardPause })
 
+            arr.push({ type: "div" })
+
             return addStages(arr)
         }
 
@@ -220,11 +236,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
 
         if (found !== -1) {
             if (indexIsEnabled(found)) {
-                setPipeline(
-                    pipeline.filter(
-                        (s) => s.type !== "read" || s._index !== found
-                    )
-                )
+                removeStage(pipeline.find((s) => s._index === found).id)
             } else if (shiftDown) {
                 // If shift is down, look for the last TTS and append the clicked text to it.
                 const revInd = pipeline
@@ -356,6 +368,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         pipeline={pipeline}
                         setPipeline={setPipeline}
                         highlight={highlight}
+                        removeStage={removeStage}
                     />
                 </div>
             </div>

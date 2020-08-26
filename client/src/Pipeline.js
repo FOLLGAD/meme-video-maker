@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useMemo } from "react"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 
 function arrayMove(arr1, old_index, new_index) {
@@ -13,29 +13,47 @@ function arrayMove(arr1, old_index, new_index) {
     return arr
 }
 
-export default function ({ setPipeline, pipeline, highlight }) {
-    const renderStage = (stage, i) => {
+export default function ({ setPipeline, pipeline, highlight, removeStage }) {
+    const renderStage = (pipe) => {
         return (
             <div
                 className="pipeline-stage"
                 style={{
-                    background:
-                        highlight === i ? "aliceblue" : "rgb(235, 235, 235)",
+                    background: pipe.some((s) => s.id === highlight)
+                        ? "aliceblue"
+                        : "rgb(235, 235, 235)",
                     marginBottom: 10,
                     borderRadius: 4,
                     boxShadow: "0 2px 3px #ccc",
                     padding: 8,
                 }}
             >
-                <div>{renderInnerStage(stage, i)}</div>
+                {pipe.map((stage) => (
+                    <div
+                        key={stage.id}
+                        style={{
+                            borderBottom: "1px solid rgb(206, 205, 205)",
+                            paddingBottom: 3,
+                            marginBottom: 3,
+                        }}
+                    >
+                        {renderInnerStage(stage)}
+                    </div>
+                ))}
                 <div>
-                    <span style={{ marginRight: 3 }}>{i + 1}</span>
-                    <button onClick={() => removeStage(i)}>Delete</button>
+                    <div>
+                        <button onClick={() => removeStage(pipe[0].id)}>
+                            Delete
+                        </button>
+                        <span style={{ marginRight: 3 }}>
+                            ID: {pipe[0].id + 1}
+                        </span>
+                    </div>
                 </div>
             </div>
         )
     }
-    const renderInnerStage = (stage, i) => {
+    const renderInnerStage = (stage) => {
         switch (stage.type) {
             case "read":
                 return (
@@ -48,7 +66,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             }}
                             rows="3"
                             onChange={(e) =>
-                                updateStage(i, {
+                                updateStage(stage.id, {
                                     ...stage,
                                     text: e.target.value,
                                 })
@@ -62,7 +80,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                                         type="checkbox"
                                         checked={stage.reveal}
                                         onChange={(e) =>
-                                            updateStage(i, {
+                                            updateStage(stage.id, {
                                                 ...stage,
                                                 reveal: e.target.checked,
                                             })
@@ -75,7 +93,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                                         type="checkbox"
                                         checked={stage.blockuntil}
                                         onChange={(e) =>
-                                            updateStage(i, {
+                                            updateStage(stage.id, {
                                                 ...stage,
                                                 blockuntil: e.target.checked,
                                             })
@@ -98,7 +116,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             max={10}
                             step={0.1}
                             onChange={(e) => {
-                                updateStage(i, {
+                                updateStage(stage.id, {
                                     ...stage,
                                     secs: Number(e.target.valueAsNumber),
                                 })
@@ -106,8 +124,9 @@ export default function ({ setPipeline, pipeline, highlight }) {
                         />
                         {[0.5, 0.8, 1.3].map((s) => (
                             <button
+                                key={s}
                                 onClick={() =>
-                                    updateStage(i, {
+                                    updateStage(stage.id, {
                                         ...stage,
                                         secs: s,
                                     })
@@ -131,7 +150,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             max={10}
                             step={1}
                             onChange={(e) => {
-                                updateStage(i, {
+                                updateStage(stage.id, {
                                     ...stage,
                                     times: Number(e.target.valueAsNumber),
                                 })
@@ -144,20 +163,48 @@ export default function ({ setPipeline, pipeline, highlight }) {
         }
     }
 
+    // Splits the pipeline up in substages, where every type: "div" becomes a separator
+    const chunkedPipeline = useMemo(() => {
+        let arr = []
+        let work = []
+        pipeline.forEach((pipe) => {
+            if (pipe.type === "div") {
+                arr.push(work)
+                work = []
+            } else {
+                work.push(pipe)
+            }
+        })
+        return arr
+    }, [pipeline])
+
     const onDragEnd = ({ source, destination }) => {
         if (!destination) return
 
-        moveStage(source.index, destination.index)
+        const toMove = chunkedPipeline[source.index]
+        const beMoved = chunkedPipeline[destination.index]
+        const fromIndex = pipeline.findIndex((s) => s.id === toMove[0].id)
+        const fromLength =
+            pipeline.slice(fromIndex).findIndex((a) => a.type === "div") + 1
+        let toIndex = pipeline.findIndex((s) => s.id === beMoved[0].id)
+
+        function moveSub(arr, from, len, to) {
+            const res = arr.slice()
+            // Remove the things to move
+            const taken = res.splice(from, len)
+            // Insert them at the destination index, taking into account the index may have changed
+            res.splice(to, 0, ...taken)
+
+            return res
+        }
+
+        const moved = moveSub(pipeline, fromIndex, fromLength, toIndex)
+
+        setPipeline(moved)
     }
 
-    const removeStage = (index) => {
-        pipeline.splice(index, 1)
-        setPipeline([...pipeline])
-    }
-    const moveStage = (origIndex, toIndex) => {
-        setPipeline(arrayMove(pipeline, origIndex, toIndex))
-    }
-    const updateStage = (index, newStage) => {
+    const updateStage = (id, newStage) => {
+        const index = pipeline.findIndex((p) => p.id === id)
         setPipeline([
             ...pipeline.slice(0, index),
             newStage,
@@ -174,10 +221,10 @@ export default function ({ setPipeline, pipeline, highlight }) {
                             ref={provided.innerRef}
                             {...provided.droppableProps}
                         >
-                            {pipeline.map((pipe, index) => (
+                            {chunkedPipeline.map((pipe, index) => (
                                 <Draggable
-                                    key={pipe.id}
-                                    draggableId={pipe.id.toString()}
+                                    key={pipe[0].id}
+                                    draggableId={pipe[0].id.toString()}
                                     index={index}
                                 >
                                     {(provided, snapshot) => (
@@ -186,7 +233,7 @@ export default function ({ setPipeline, pipeline, highlight }) {
                                             {...provided.draggableProps}
                                             {...provided.dragHandleProps}
                                         >
-                                            {renderStage(pipe, index)}
+                                            {renderStage(pipe)}
                                         </div>
                                     )}
                                 </Draggable>
