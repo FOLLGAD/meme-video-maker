@@ -32,7 +32,7 @@ const FilesBucket = "4chan-files"
 const dbThemeName = "4chan-themes"
 
 // setup multipart upload for koa
-const uploadDir = tmp.dirSync()
+const uploadDir = tmp.dirSync({ prefix: "stay-tmp-" })
 import * as koaMultiBody from "koa-body"
 const koaBody = koaMultiBody({
     multipart: true,

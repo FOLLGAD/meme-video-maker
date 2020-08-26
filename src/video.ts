@@ -3,8 +3,10 @@ import * as Canvas from "canvas"
 import * as ffmpeg from "fluent-ffmpeg"
 import { writeFileSync, createWriteStream } from "fs"
 import { join } from "path"
-import { file, fileSync, FileResult } from "tmp-promise"
+import { file, fileSync, FileResult, setGracefulCleanup } from "tmp-promise"
 import { synthSpeech } from "./synth"
+
+setGracefulCleanup()
 
 const blockColor = "black"
 

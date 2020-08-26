@@ -39,6 +39,8 @@ Build on github actions/circleCI and push to prod server
 
 Fix this shit!
 
+Was fixed by running the requests to Google Vision sequentually instead of in parallel.
+
 ### Easy work
 
 -   och sen någon progress bar som i reddit vid maker som visar hur många memes det är kvar osv, och så man kan sortera om dem
@@ -59,3 +61,12 @@ Fix this shit!
 -   Swear word filter
 -   Ladda upp alla bilder i S3 storage, koppla till sam's meme-bot. Ta bort memes man redan använt ur listan
 -   Save status so that you can pick up your work later. Maybe only locally.
+
+## Devjrn
+
+Clean up all the `node-tmp` files after use
+
+Show when a video render failed
+Show videos currently rendering
+
+When a video fails, allow another one to render after it
