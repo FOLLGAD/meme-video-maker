@@ -92,7 +92,9 @@ export default function Edit({ res, images, onFinish }) {
     const onSubmit = async (e) => {
         e.preventDefault()
 
-        const realPipeline = pipeline.filter((a) => a.type !== "div")
+        const realPipeline = pipeline.map((p) =>
+            p.filter((a) => a.type !== "div")
+        )
         try {
             await onFinish(realPipeline, images, settings)
             setStage(2)
