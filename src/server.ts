@@ -60,8 +60,12 @@ async function addToQueue(fn: Function) {
             const job = queue.shift()
 
             if (!job) continue
-
-            await job()
+            try {
+                await job()
+            } catch (err) {
+                console.error("An error ocurred")
+                console.error(err)
+            }
         }
         currentlyRunning = false
     }
