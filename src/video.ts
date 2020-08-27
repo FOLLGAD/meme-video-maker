@@ -195,7 +195,7 @@ export async function makeVids(
         // If has outro or intro
         vidPath = await file({ postfix: ".mp4" })
         console.log("Adding intro, outro")
-        await simpleConcat(vidsFull, vidPath.path)
+        await reencodedConcat(vidsFull, vidPath.path)
         out.cleanup()
     }
 
@@ -429,6 +429,26 @@ function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
             .inputFPS(25)
             .videoCodec("copy")
             .audioCodec("copy")
+            .outputOptions(["-pix_fmt yuv420p"])
+            .audioChannels(2)
+            .fps(25)
+            .on("end", () => {
+                res()
+            })
+            .on("error", (err) => {
+                console.error(err)
+                rej()
+            })
+            .save(outPath)
+    })
+}
+
+function reencodedConcat(videoPaths: string[], outPath: string): Promise<void> {
+    return new Promise((res, rej) => {
+        getConcat(videoPaths)
+            .inputFPS(25)
+            .videoCodec("libx264")
+            .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
             .audioChannels(2)
             .fps(25)
