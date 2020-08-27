@@ -195,7 +195,7 @@ export async function makeVids(
         // If has outro or intro
         vidPath = await file({ postfix: ".mp4" })
         console.log("Adding intro, outro")
-        await reencodedConcat(vidsFull, vidPath.path)
+        await simpleConcat(vidsFull, vidPath.path)
         out.cleanup()
     }
 
@@ -282,19 +282,31 @@ async function makeImageThing(
 
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
+                    let videoInfo: any = await probe(speechFile)
+
+                    const pngf = await file({ postfix: ".png" })
+
+                    const st = createWriteStream(pngf.path)
+                    await new Promise((res) =>
+                        imageCanvas.createPNGStream().pipe(st).on("finish", res)
+                    )
 
                     ffmpeg()
-                        .input(imageCanvas.createPNGStream())
-                        .inputOptions(["-stream_loop -1"])
+                        .input(pngf.path)
+                        .inputOptions(["-loop 1"])
                         .input(speechFile)
                         .size(getResString(outWidth, outHeight))
                         .autopad()
-                        .fps(25)
                         .videoCodec("libx264")
                         .audioCodec("aac")
                         .audioFrequency(24000)
                         .audioChannels(2)
-                        .outputOptions(["-pix_fmt yuv420p"])
+                        .duration(videoInfo.format.duration)
+                        .outputOptions([
+                            "-pix_fmt yuv420p",
+                            "-r 25",
+                            "-shortest",
+                        ])
                         .save(f.path)
                         .on("error", (err) =>
                             rej(
@@ -313,6 +325,8 @@ async function makeImageThing(
             }
         } else if (stage.type === "pause") {
             const pauseTime = Math.min(Math.abs(Number(stage.secs)), 10)
+            if (pauseTime === 0.0) continue
+
             try {
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
@@ -415,12 +429,24 @@ function getConcat(videoPaths) {
 
     writeFileSync(tempPath, videoPaths.map((d) => `file '${d}'\n`).join(""))
 
-    let f = ffmpeg().input(tempPath).inputOptions(["-f concat", "-safe 0"])
+    let f = ffmpeg()
+        .input(tempPath)
+        .inputOptions(["-f concat", "-safe 0", "-r 25"])
     return f
 }
 
 function getResString(width = 1920, height = 1080) {
     return width + "x" + height
+}
+
+function tsConcat(videoPaths: string[], outPath: string): Promise<void> {
+    return new Promise((res, rej) => {
+        ffmpeg("concat:" + videoPaths.join("|"))
+            .audioCodec("copy")
+            .videoCodec("copy")
+            .on("end", res)
+            .save(outPath)
+    })
 }
 
 function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
@@ -496,16 +522,16 @@ function combineVideoAudio(videoPath, audioPath, outPath) {
 }
 
 export function normalizeVideo(videoPath: string, outPath: string) {
-    return new Promise((res, rej) =>
+    return new Promise((res, rej) => {
         ffmpeg(videoPath)
+            .videoCodec("libx264")
             .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
-            .audioFrequency(24000)
             .audioChannels(2)
             .fps(25)
-            .videoCodec("libx264")
+            .audioFrequency(24000)
             .save(outPath)
             .on("end", res)
             .on("error", rej)
-    )
+    })
 }
