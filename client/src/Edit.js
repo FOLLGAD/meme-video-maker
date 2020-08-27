@@ -92,8 +92,9 @@ export default function Edit({ res, images, onFinish }) {
     const onSubmit = async (e) => {
         e.preventDefault()
 
+        const realPipeline = pipeline.filter((a) => a.type !== "div")
         try {
-            await onFinish(pipeline, images, settings)
+            await onFinish(realPipeline, images, settings)
             setStage(2)
         } catch (error) {
             console.error("error")
