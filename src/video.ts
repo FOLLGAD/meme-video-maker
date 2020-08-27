@@ -302,11 +302,7 @@ async function makeImageThing(
                         .audioFrequency(24000)
                         .audioChannels(2)
                         .duration(videoInfo.format.duration)
-                        .outputOptions([
-                            "-pix_fmt yuv420p",
-                            "-r 25",
-                            "-shortest",
-                        ])
+                        .outputOptions(["-pix_fmt yuv420p", "-r 25"])
                         .save(f.path)
                         .on("error", (err) =>
                             rej(
@@ -340,7 +336,7 @@ async function makeImageThing(
 
                     ffmpeg()
                         .input(pngf.path)
-                        .inputOptions(["-stream_loop -1"])
+                        .inputOptions(["-loop 1"])
                         .input(
                             // Insert an empty audio stream, otherwise the
                             // pauses fuck up the rest of the vid
@@ -349,13 +345,12 @@ async function makeImageThing(
                         .inputOptions(["-f lavfi"])
                         .size(getResString(outWidth, outHeight))
                         .autopad()
-                        .fps(25)
                         .videoCodec("libx264")
                         .audioCodec("aac")
                         .audioFrequency(24000)
                         .audioChannels(2)
                         .duration(pauseTime)
-                        .outputOptions(["-pix_fmt yuv420p"])
+                        .outputOptions(["-pix_fmt yuv420p", "-r 25"])
                         .save(f.path)
                         .on("error", (err) =>
                             rej(
@@ -379,12 +374,13 @@ async function makeImageThing(
                 stage.rect.height
             )
         } else if (stage.type === "gif") {
-            const times = Math.min(Math.abs(stage.times), 10) | 0
+            const times = Math.min(Math.abs(stage.times), 10)
 
             const f: FileResult = await new Promise(async (res, rej) => {
                 let f = await file({ postfix: ".mp4" })
 
                 ffmpeg(image)
+                    // .inputOptions(["-r 25"])
                     .input(
                         // Insert an empty audio stream, otherwise the
                         // pauses fuck up the rest of the vid
@@ -397,8 +393,7 @@ async function makeImageThing(
                     .size(getResString(outWidth, outHeight))
                     .autopad()
                     .videoCodec("libx264")
-                    .fps(25)
-                    .outputOptions(["-pix_fmt yuv420p", "-shortest"])
+                    .outputOptions(["-pix_fmt yuv420p", "-shortest", "-r 25"])
                     .save(f.path)
                     .on("error", (err) =>
                         rej(
@@ -410,6 +405,8 @@ async function makeImageThing(
 
             // Push the gif to the vids array as many times as needed!
             for (let i = 0; i < times; i++) vids.push(f.path)
+        } else {
+            console.log("unknown stage", stage)
         }
     }
 
