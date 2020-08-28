@@ -203,6 +203,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             let arr = []
 
             arr.push({ type: "reveal", rect })
+            arr.push({ type: "div" })
 
             if (shiftDown) {
                 const rs = blocks
@@ -210,7 +211,7 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                     .filter(([r, _]) => rectContainsRect(rect, r.rect))
                     .filter(([_, i]) => !indexIsEnabled(i))
 
-                rs.forEach(([block, i]) =>
+                rs.forEach(([block, i]) => {
                     arr.push({
                         type: "read",
                         _index: i,
@@ -220,12 +221,12 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
                         reveal: false,
                         added: [],
                     })
-                )
+                    arr.push({ type: "div" })
+                })
+            } else {
+                arr.push({ type: "pause", secs: 0.0 })
+                arr.push({ type: "div" })
             }
-
-            arr.push({ type: "pause", secs: 0.0 })
-
-            arr.push({ type: "div" })
 
             return addStages(arr)
         }
