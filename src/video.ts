@@ -232,7 +232,9 @@ async function makeImageThing(
     let vids: string[] = []
 
     for (let i = 0; i < pipeline.length; i++) {
+        console.time("render_stage")
         const stage = pipeline[i]
+        console.log("stage:", stage.type)
         if (stage.type === "read") {
             if (stage.reveal) {
                 // Clear text
@@ -275,10 +277,12 @@ async function makeImageThing(
 
         if (stage.type === "read") {
             try {
+                console.time("synth_speech")
                 const speechFile = await synthSpeech({
                     text: stage.text,
                     voice: settings.voice || "daniel",
                 })
+                console.timeEnd("synth_speech")
 
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
@@ -408,6 +412,7 @@ async function makeImageThing(
         } else {
             console.log("unknown stage", stage)
         }
+        console.timeEnd("render_stage")
     }
 
     if (vids.length === 0) {
