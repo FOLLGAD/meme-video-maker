@@ -70,6 +70,7 @@ export async function makeCall(
     voice = 5
 ) {
     text = text
+        .replace(/\.\s/g, "..\n") // Replace single dots with double dots, otherwise he doesn't say anything
         .replace(/&/g, " and ") // '&' doesn't work for Daniel, he says &amp instead
         .replace(/[<>]/g, "") // < and > makes the request fail
         // .replace('\n', '')
@@ -91,7 +92,7 @@ export async function makeCall(
         tries++
         try {
             // Timout at 5 seconds
-            let p = getTextPromise(
+            const p = getTextPromise(
                 engine,
                 language,
                 voice,
@@ -99,13 +100,13 @@ export async function makeCall(
                 acc,
                 checksum
             )
-            let t = await timeoutPromise(5000, p)
+            const t = await timeoutPromise(5000, p)
             return t
         } catch (err) {
             if (err.message == 400 && tries > 3) {
                 throw err
             }
-            let retrytime = 1000
+            const retrytime = 1000
             console.error(
                 `Daniel: Request failed. Retrying again in ${
                     retrytime / 1000
