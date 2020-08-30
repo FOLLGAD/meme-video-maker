@@ -122,7 +122,7 @@ export default function ({ setPipeline, pipeline, highlight, removeStage }) {
                                 })
                             }}
                         />
-                        {[0, 0.5, 0.8, 1.3].map((s) => (
+                        {[0, 0.5, 0.9, 1.5].map((s) => (
                             <button
                                 key={s}
                                 onClick={() =>
