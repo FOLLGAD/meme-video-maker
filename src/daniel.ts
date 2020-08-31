@@ -70,6 +70,7 @@ export async function makeCall(
     voice = 5
 ) {
     text = text
+        .trim()
         .replace(/\.\s/g, "..\n") // Replace single dots with double dots, otherwise he doesn't say anything
         .replace(/&/g, " and ") // '&' doesn't work for Daniel, he says &amp instead
         .replace(/[<>]/g, "") // < and > makes the request fail
