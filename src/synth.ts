@@ -34,19 +34,15 @@ export function synthSpeech({
 
     switch (voice) {
         case "daniel":
-            if (process.platform === "darwin") {
-                // Darwin means Mac
-                return module.exports.macTTSToFile(text)
-            }
             // Else, fall back on the epic Oddcast api
-            return module.exports.synthOddcast(text)
+            return synthOddcast(text)
 
         case "linux":
             // Don't use
-            return module.exports.linuxTTSToFile(text)
+            return linuxTTSToFile(text)
 
         case "google-uk":
-            return module.exports.synthGoogle(text, {
+            return synthGoogle(text, {
                 languageCode: "en-GB",
                 voiceName: "en-GB-Wavenet-B",
                 pitch: -4.4,
@@ -56,7 +52,7 @@ export function synthSpeech({
         case "google-us":
         default:
             // Fallthrough to default
-            return module.exports.synthGoogle(text, {
+            return synthGoogle(text, {
                 speakingRate: 0.98,
                 languageCode: "en-US",
                 voiceName: "en-US-Wavenet-D",
@@ -65,7 +61,7 @@ export function synthSpeech({
     }
 }
 
-export function linuxTTSToFile(text) {
+export function linuxTTSToFile(text): Promise<string> {
     return new Promise((resolve) => {
         let file = tmp.fileSync({ postfix: ".mp3" })
         let filepath = file.name
@@ -77,7 +73,7 @@ export function linuxTTSToFile(text) {
     })
 }
 
-export function macTTSToFile(text) {
+export function macTTSToFile(text): Promise<string> {
     return new Promise((resolve) => {
         let file = tmp.fileSync({ postfix: ".aiff" })
         let filepath = file.name
@@ -89,7 +85,10 @@ export function macTTSToFile(text) {
     })
 }
 
-export function synthGoogle(text, voiceSettings = defaultVoiceSettings) {
+export function synthGoogle(
+    text,
+    voiceSettings = defaultVoiceSettings
+): Promise<string> {
     text = text
         .replace(/[><]/g, "") // Remove greater/less than
         .split("\n")

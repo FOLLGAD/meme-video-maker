@@ -276,6 +276,9 @@ async function makeImageThing(
             })
 
         if (stage.type === "read") {
+            let speechDone = false,
+                pngDone = false,
+                ffmpegDone = false
             try {
                 console.time("synth_speech")
                 const speechFile = await synthSpeech({
@@ -283,6 +286,7 @@ async function makeImageThing(
                     voice: settings.voice || "daniel",
                 })
                 console.timeEnd("synth_speech")
+                speechDone = true
 
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
@@ -291,9 +295,14 @@ async function makeImageThing(
                     const pngf = await file({ postfix: ".png" })
 
                     const st = createWriteStream(pngf.path)
-                    await new Promise((res) =>
-                        imageCanvas.createPNGStream().pipe(st).on("finish", res)
+                    await new Promise((res, rej) =>
+                        imageCanvas
+                            .createPNGStream()
+                            .pipe(st)
+                            .on("finish", res)
+                            .on("error", rej)
                     )
+                    pngDone = true
 
                     ffmpeg()
                         .input(pngf.path)
@@ -316,11 +325,14 @@ async function makeImageThing(
                             )
                         )
                         .on("end", () => res(f))
+
+                    ffmpegDone = true
                 })
 
                 vids.push(f.path)
             } catch (err) {
                 console.error("MakeImageThing:", err)
+                console.error("s,p,f", speechDone, pngDone, ffmpegDone)
                 // scene couldn't be rendered, so it won't be pushed to the video-list
             }
         } else if (stage.type === "pause") {
