@@ -70,10 +70,10 @@ export async function makeCall(
     voice = 5
 ) {
     text = text
-        .trim()
-        .replace(/\.\s/g, "..\n") // Replace single dots with double dots, otherwise he doesn't say anything
+        .trim() // Because trailing spaces can fuck it up
+        .replace(/\.\s/g, "..\n") // Replace single dots with double dots, otherwise he doesn't do a full stop
         .replace(/&/g, " and ") // '&' doesn't work for Daniel, he says &amp instead
-        .replace(/[<>]/g, "") // < and > makes the request fail
+        .replace(/[<>]/g, "") // < and > makes the request fail (maybe because they have SSML support?)
         // .replace('\n', '')
         .split("\n")
         .map((line) => line.trim())
