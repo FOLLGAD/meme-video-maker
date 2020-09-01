@@ -44,6 +44,11 @@ export type ImageSettings = {
 }
 
 export type Pipeline = { pipeline: Stage[]; settings?: ImageSettings }
+export type PipelineImg = {
+    pipeline: Stage[]
+    settings?: ImageSettings
+    image: string
+}
 
 // Ffprobe
 // Usually takes ~40ms
@@ -75,30 +80,18 @@ function intersperse(d: any[], sep: any): any[] {
     )
 }
 
-async function parallell(
-    imageReaders: Pipeline[],
-    images: string[],
-    settings: VideoSettings
-) {
+async function parallell(imageReaders: PipelineImg[], settings: VideoSettings) {
     const promises = imageReaders.map((_, i) => {
-        return makeImageThing(imageReaders[i], images[i], settings)
+        return makeImageThing(imageReaders[i], settings)
     })
     return await Promise.all(promises)
 }
 
-async function serial(
-    imageReaders: Pipeline[],
-    images: string[],
-    settings: VideoSettings
-) {
+async function serial(imageReaders: PipelineImg[], settings: VideoSettings) {
     let arr: (string | null)[] = []
     for (let i = 0; i < imageReaders.length; i++) {
         console.log("Index:", i)
-        const result = await makeImageThing(
-            imageReaders[i],
-            images[i],
-            settings
-        )
+        const result = await makeImageThing(imageReaders[i], settings)
         arr.push(result)
     }
     return arr
@@ -149,22 +142,23 @@ async function convToDims(
 }
 
 export async function makeVids(
-    pipelines: Pipeline[],
+    pipes: Pipeline[],
     images: string[],
     videoSettings: VideoSettings
 ): Promise<string> {
+    const pipelines = pipes.map((p, i) => ({ ...p, image: images[i] }))
+
     videoSettings.outWidth = videoSettings.outWidth || 1920
     videoSettings.outHeight = videoSettings.outHeight || 1080
 
     if (videoSettings.outWidth > 10000 || videoSettings.outHeight > 10000)
         throw new Error("Too large video dimensions bro")
 
+    console.log("Making clips...")
     const filteredPipelines = pipelines.filter(
         (p) => !p.settings || !p.settings.showFirst
     )
-
-    console.log("Making clips...")
-    let vidsMidOrNull = await serial(filteredPipelines, images, videoSettings)
+    let vidsMidOrNull = await serial(filteredPipelines, videoSettings)
     let vidsMid = vidsMidOrNull.filter(notEmpty)
 
     if (videoSettings.transition)
@@ -205,17 +199,12 @@ export async function makeVids(
             )
         )
 
-    const introVids = pipelines
-        .map((p, i): [Pipeline, number] => [p, i])
-        .filter(([p, _]) => p.settings && p.settings.showFirst)
+    const introVids = pipelines.filter(
+        (p) => p.settings && p.settings.showFirst
+    )
 
     if (introVids.length > 0) {
-        const introImages = introVids.map(([_, i]) => images[i])
-        let vidsMidOrNull = await serial(
-            introVids.map(([a]) => a),
-            introImages,
-            videoSettings
-        )
+        let vidsMidOrNull = await serial(introVids, videoSettings)
         let vidsMid = vidsMidOrNull.filter(notEmpty)
         vidsFull.unshift(...vidsMid)
     }
@@ -233,8 +222,7 @@ export async function makeVids(
 }
 
 async function makeImageThing(
-    pipelineObj: Pipeline,
-    image: string,
+    pipelineObj: PipelineImg,
     videoSettings: VideoSettings
 ): Promise<string | null> {
     const { pipeline } = pipelineObj
@@ -243,7 +231,7 @@ async function makeImageThing(
         return null
     }
 
-    const loadedImage = await Canvas.loadImage(image)
+    const loadedImage = await Canvas.loadImage(pipelineObj.image)
     const { width, height } = loadedImage
     const imageCanvas = Canvas.createCanvas(width, height)
     const imageCanvCtx = imageCanvas.getContext("2d")
@@ -431,7 +419,7 @@ async function makeImageThing(
             const f: FileResult = await new Promise(async (res, rej) => {
                 let f = await file({ postfix: ".mp4" })
 
-                ffmpeg(image)
+                ffmpeg(pipelineObj.image)
                     // .inputOptions(["-r 25"])
                     .input(
                         // Insert an empty audio stream, otherwise the
