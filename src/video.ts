@@ -39,7 +39,11 @@ export interface GifStage {
 
 export type Stage = ReadStage | PauseStage | RevealStage | GifStage
 
-export type Pipeline = Stage[]
+export type ImageSettings = {
+    showFirst: false
+}
+
+export type Pipeline = { pipeline: Stage[]; settings?: ImageSettings }
 
 // Ffprobe
 // Usually takes ~40ms
@@ -52,7 +56,7 @@ const probe = function (path) {
     })
 }
 
-interface Settings {
+interface VideoSettings {
     transition?: string
     intro?: string
     outro?: string
@@ -74,7 +78,7 @@ function intersperse(d: any[], sep: any): any[] {
 async function parallell(
     imageReaders: Pipeline[],
     images: string[],
-    settings: Settings
+    settings: VideoSettings
 ) {
     const promises = imageReaders.map((_, i) => {
         return makeImageThing(imageReaders[i], images[i], settings)
@@ -85,7 +89,7 @@ async function parallell(
 async function serial(
     imageReaders: Pipeline[],
     images: string[],
-    settings: Settings
+    settings: VideoSettings
 ) {
     let arr: (string | null)[] = []
     for (let i = 0; i < imageReaders.length; i++) {
@@ -145,27 +149,38 @@ async function convToDims(
 }
 
 export async function makeVids(
-    pipeline: Pipeline[],
+    pipelines: Pipeline[],
     images: string[],
-    settings: Settings
+    videoSettings: VideoSettings
 ): Promise<string> {
+    videoSettings.outWidth = videoSettings.outWidth || 1920
+    videoSettings.outHeight = videoSettings.outHeight || 1080
+
+    if (videoSettings.outWidth > 10000 || videoSettings.outHeight > 10000)
+        throw new Error("Too large video dimensions bro")
+
+    const filteredPipelines = pipelines.filter(
+        (p) => !p.settings || !p.settings.showFirst
+    )
+
     console.log("Making clips...")
-    let vidsMidOrNull = await serial(pipeline, images, settings)
+    let vidsMidOrNull = await serial(filteredPipelines, images, videoSettings)
     let vidsMid = vidsMidOrNull.filter(notEmpty)
 
-    if (settings.transition) vidsMid = intersperse(vidsMid, settings.transition)
+    if (videoSettings.transition)
+        vidsMid = intersperse(vidsMid, videoSettings.transition)
 
     let out = await file({ postfix: ".mp4" })
 
     console.log("Concatting w/ transitions")
     await simpleConcat(vidsMid, out.path)
 
-    if (settings.song) {
+    if (videoSettings.song) {
         const songout = await file({ postfix: ".mp4" })
 
         console.log("Adding song")
 
-        await combineVideoAudio(out.path, settings.song!, songout.path)
+        await combineVideoAudio(out.path, videoSettings.song!, songout.path)
 
         out.cleanup()
         out = songout
@@ -173,22 +188,37 @@ export async function makeVids(
 
     let vidsFull = [out.path]
 
-    if (settings.intro)
+    if (videoSettings.intro)
         vidsFull.unshift(
             await convToDims(
-                settings.intro,
-                settings.outWidth,
-                settings.outHeight
+                videoSettings.intro,
+                videoSettings.outWidth,
+                videoSettings.outHeight
             )
         )
-    if (settings.outro)
+    if (videoSettings.outro)
         vidsFull.push(
             await convToDims(
-                settings.outro,
-                settings.outWidth,
-                settings.outHeight
+                videoSettings.outro,
+                videoSettings.outWidth,
+                videoSettings.outHeight
             )
         )
+
+    const introVids = pipelines
+        .map((p, i): [Pipeline, number] => [p, i])
+        .filter(([p, _]) => p.settings && p.settings.showFirst)
+
+    if (introVids.length > 0) {
+        const introImages = introVids.map(([_, i]) => images[i])
+        let vidsMidOrNull = await serial(
+            introVids.map(([a]) => a),
+            introImages,
+            videoSettings
+        )
+        let vidsMid = vidsMidOrNull.filter(notEmpty)
+        vidsFull.unshift(...vidsMid)
+    }
 
     let vidPath = out
     if (vidsFull.length > 1) {
@@ -203,19 +233,15 @@ export async function makeVids(
 }
 
 async function makeImageThing(
-    pipeline: Pipeline,
+    pipelineObj: Pipeline,
     image: string,
-    settings: Settings
+    videoSettings: VideoSettings
 ): Promise<string | null> {
+    const { pipeline } = pipelineObj
+
     if (pipeline.length === 0) {
         return null
     }
-
-    const outWidth = settings.outWidth || 1920
-    const outHeight = settings.outHeight || 1080
-
-    if (outWidth > 10000 || outHeight > 10000)
-        throw new Error("Too large video dimensions bro")
 
     const loadedImage = await Canvas.loadImage(image)
     const { width, height } = loadedImage
@@ -283,7 +309,7 @@ async function makeImageThing(
                 console.time("synth_speech")
                 const speechFile = await synthSpeech({
                     text: stage.text,
-                    voice: settings.voice || "daniel",
+                    voice: videoSettings.voice || "daniel",
                 })
                 console.timeEnd("synth_speech")
                 speechDone = true
@@ -308,7 +334,12 @@ async function makeImageThing(
                         .input(pngf.path)
                         .inputOptions(["-loop 1"])
                         .input(speechFile)
-                        .size(getResString(outWidth, outHeight))
+                        .size(
+                            getResString(
+                                videoSettings.outWidth,
+                                videoSettings.outHeight
+                            )
+                        )
                         .autopad()
                         .videoCodec("libx264")
                         .audioCodec("aac")
@@ -359,7 +390,12 @@ async function makeImageThing(
                             "anullsrc=cl=stereo:r=24000"
                         )
                         .inputOptions(["-f lavfi"])
-                        .size(getResString(outWidth, outHeight))
+                        .size(
+                            getResString(
+                                videoSettings.outWidth,
+                                videoSettings.outHeight
+                            )
+                        )
                         .autopad()
                         .videoCodec("libx264")
                         .audioCodec("aac")
@@ -406,7 +442,12 @@ async function makeImageThing(
                     .audioCodec("aac")
                     .audioFrequency(24000)
                     .audioChannels(2)
-                    .size(getResString(outWidth, outHeight))
+                    .size(
+                        getResString(
+                            videoSettings.outWidth,
+                            videoSettings.outHeight
+                        )
+                    )
                     .autopad()
                     .videoCodec("libx264")
                     .outputOptions(["-pix_fmt yuv420p", "-shortest", "-r 25"])

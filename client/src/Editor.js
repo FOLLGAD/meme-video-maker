@@ -1,5 +1,5 @@
 import React, { useMemo, useReducer, useState } from "react"
-import FileImage from "./FileImage"
+import EditImage from "./EditImage"
 import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
 
@@ -85,16 +85,34 @@ export default function Edit({ res, images, onFinish }) {
         return draw
     }, [res])
 
-    const [pipeline, _setPipeline] = useState(images.map(() => []))
+    const [pipelines, _setPipelines] = useState(
+        images.map(() => ({
+            pipeline: [],
+            settings: {
+                showFirst: false,
+            },
+        }))
+    )
     const setPipeline = (i) => (pipe) =>
-        _setPipeline([...pipeline.slice(0, i), pipe, ...pipeline.slice(i + 1)])
+        _setPipelines([
+            ...pipelines.slice(0, i),
+            { ...pipelines[i], pipeline: pipe },
+            ...pipelines.slice(i + 1),
+        ])
+    const setSettings = (i) => (settings) =>
+        _setPipelines([
+            ...pipelines.slice(0, i),
+            { ...pipelines[i], settings: settings },
+            ...pipelines.slice(i + 1),
+        ])
 
     const onSubmit = async (e) => {
         e.preventDefault()
 
-        const realPipeline = pipeline.map((p) =>
-            p.filter((a) => a.type !== "div")
-        )
+        const realPipeline = pipelines.map((p) => ({
+            ...p,
+            pipeline: p.pipeline.filter((a) => a.type !== "div"),
+        }))
         try {
             await onFinish(realPipeline, images, settings)
             setStage(2)
@@ -134,8 +152,8 @@ export default function Edit({ res, images, onFinish }) {
         </div>
     )
 
-    const estimatedTime = useMemo(() => estimateTimePretty(pipeline), [
-        pipeline,
+    const estimatedTime = useMemo(() => estimateTimePretty(pipelines), [
+        pipelines,
     ])
 
     return (
@@ -158,7 +176,7 @@ export default function Edit({ res, images, onFinish }) {
                     <Settings
                         settings={settings}
                         onSubmit={onSubmit}
-                        pipeline={pipeline}
+                        pipeline={pipelines}
                         dispatchSettings={dispatchSettings}
                     />
                     <button onClick={() => setStage(0)}>Back</button>
@@ -182,17 +200,19 @@ export default function Edit({ res, images, onFinish }) {
                             }}
                         >
                             <div className="card">
-                                Number {index + 1} out of {pipeline.length}
+                                Number {index + 1} out of {pipelines.length}
                             </div>
                             <div className="card">Time: {estimatedTime}</div>
                             <div className="card">Filetype: {img.type}</div>
                         </div>
-                        <FileImage
+                        <EditImage
                             key={img}
                             src={img}
                             blocks={drawBlocks[index]}
-                            pipeline={pipeline[index]}
+                            pipeline={pipelines[index].pipeline}
                             setPipeline={setPipeline(index)}
+                            settings={pipelines[index].settings}
+                            setSettings={setSettings(index)}
                         />
                     </div>
 

@@ -57,7 +57,7 @@ export default function Form({ setData }) {
                 </div>
                 <div>{error}</div>
                 <div style={{ paddingTop: 10 }}>
-                    <button type="submit" onClick={submit}>
+                    <button type="submit" onClick={submit} disabled={loading}>
                         {loading ? "Loading..." : "Go"}
                     </button>
                 </div>

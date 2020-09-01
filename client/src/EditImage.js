@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
+import { standardPause } from "./constants"
 import Pipeline from "./Pipeline"
-import { standardPause, shortPause } from "./constants"
 
 // Gets the mouse click position within the canvas
 function getCursorPosition(canvas, event) {
@@ -24,7 +24,14 @@ const isInRect = (rect, x, y) =>
     y >= rect.y &&
     y <= rect.y + rect.height
 
-export default function FileImage({ src, blocks, pipeline, setPipeline }) {
+export default function FileImage({
+    src,
+    blocks,
+    settings,
+    setSettings,
+    pipeline,
+    setPipeline,
+}) {
     const canvasRef = useRef(null)
     const [ctx, setCtx] = useState(null)
     const [scale, setScale] = useState(1)
@@ -317,6 +324,23 @@ export default function FileImage({ src, blocks, pipeline, setPipeline }) {
             </div>
             <div style={{ paddingRight: 5, paddingLeft: 5 }}></div>
             <div className="card">
+                <div>
+                    <label>
+                        <input
+                            title="Show this meme before the intro of the video"
+                            type="checkbox"
+                            checked={settings.showFirst}
+                            onChange={({ target }) =>
+                                setSettings({
+                                    ...settings,
+                                    showFirst: target.checked,
+                                })
+                            }
+                        />
+                        Show before?
+                    </label>
+                    <hr />
+                </div>
                 <div style={{ marginBottom: 5 }}>
                     <button
                         onClick={() =>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import Upload from "./Upload"
 import UploadTheme from "./UploadTheme"
-import Edit from "./Edit"
+import Editor from "./Editor"
 import apiFetch from "./apiFetch"
 import VideoList from "./VideoList"
 
@@ -49,7 +49,7 @@ function App() {
     return (
         <div className="app">
             {images ? (
-                <Edit res={res} images={images} onFinish={finished} />
+                <Editor res={res} images={images} onFinish={finished} />
             ) : (
                 <div style={{ display: "flex" }}>
                     <div style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>

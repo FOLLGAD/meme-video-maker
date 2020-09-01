@@ -34,21 +34,24 @@ function flat<T>(arr: T[][]): T[] {
 export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // TODO: use { image: { source: "http://dsa.com/dsa.png" } }
     // linking directly to the S3 store where the imgs are held
-    // requests: [{ image: { source: string } }]
-    // Can also group everything into one single request??
-    const chunks = chunkArray(imageObjects, 10) // Maximum maybe is 16??? but 10 to be safe
+    // https://cloud.google.com/vision/quotas
+    // Maximum is 16/request
+    const chunks = chunkArray(imageObjects, 16)
 
     const results: any[] = []
 
     // Do it synchronously instead of parallelly, since it
     // gives problems with RESOURCE_EXCEEDED: Bandwidth exhausted
+    // Also, image req doesn't take too long either way
     for (const images of chunks) {
         console.log("Reading chunk...")
         const res = await client.batchAnnotateImages({
             requests: images.map((i) => ({
                 features: [{ type: "TEXT_DETECTION" }],
-                image: { content: readFileSync(i.image) },
-                // To avoid english chars showing up as cyrillic:
+                image: {
+                    content: readFileSync(i.image),
+                },
+                // To avoid english chars showing up as cyrillic: (only happened once, but it was a bitch to debug)
                 imageContext: { languageHints: ["en"] },
             })),
         })
