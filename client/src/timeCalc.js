@@ -4,7 +4,7 @@ export function estimateComment(splits, words) {
 }
 
 export function estimateTime(pipelines) {
-    const pipes = pipelines.filter((p) => p.length > 0)
+    const pipes = pipelines.map((p) => p.pipeline).filter((p) => p.length > 0)
     const totalTime = pipes
         .map((pipeline) => {
             const { pause, splits, words } = pipeline.reduce(
