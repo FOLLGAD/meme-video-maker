@@ -45,20 +45,25 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // Also, image req doesn't take too long either way
     for (const images of chunks) {
         console.log("Reading chunk...")
-        const res = await client.batchAnnotateImages({
-            requests: images.map((i) => ({
-                features: [{ type: "TEXT_DETECTION" }],
-                image: {
-                    content: readFileSync(i.image),
-                },
-                // To avoid english chars showing up as cyrillic: (only happened once, but it was a bitch to debug)
-                imageContext: { languageHints: ["en"] },
-            })),
-        })
-        if (res[0]?.responses) {
-            results.push(...res[0].responses)
-        } else {
-            console.log("Chunk came up empty")
+        try {
+            const res = await client.batchAnnotateImages({
+                requests: images.map((i) => ({
+                    features: [{ type: "TEXT_DETECTION" }],
+                    image: {
+                        content: readFileSync(i.image),
+                    },
+                    // To avoid english chars showing up as cyrillic: (only happened once, but it was a bitch to debug)
+                    imageContext: { languageHints: ["en"] },
+                })),
+            })
+            if (res[0]?.responses) {
+                results.push(...res[0].responses)
+            } else {
+                console.log("Chunk came up empty")
+            }
+        } catch (err) {
+            console.error("chunk failed")
+            console.error(err)
         }
     }
     console.log("Finished chunk")
