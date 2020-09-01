@@ -1,20 +1,22 @@
+import * as cors from "@koa/cors"
+// AWS
+import * as AWS from "aws-sdk"
 import { ScanOutput } from "aws-sdk/clients/dynamodb"
 import { ListObjectsOutput } from "aws-sdk/clients/s3"
 import { createReadStream, existsSync, writeFileSync } from "fs"
+import * as Koa from "koa"
+// setup multipart upload for koa
+import * as koaMultiBody from "koa-body"
+import * as bodyClean from "koa-body-clean"
+import * as koaBodyParser from "koa-bodyparser"
+import * as Router from "koa-router"
 import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
-import { Pipeline, makeVids, normalizeVideo } from "./video"
+import { makeVids, normalizeVideo, Pipeline } from "./video"
 import { readImages } from "./vision"
-import * as Koa from "koa"
-import * as Router from "koa-router"
-import * as tmp from "tmp"
-import * as cors from "@koa/cors"
 
 // Load env variables
 require("dotenv").config()
-
-// AWS
-import * as AWS from "aws-sdk"
 
 // AWS S3
 const s3 = new AWS.S3()
@@ -31,19 +33,17 @@ const FilesBucket = "4chan-files"
 // DynamoDB table
 const dbThemeName = "4chan-themes"
 
-// setup multipart upload for koa
-const uploadDir = tmp.dirSync({ prefix: "stay-tmp-" })
-import * as koaMultiBody from "koa-body"
 const koaBody = koaMultiBody({
     multipart: true,
-    formidable: { uploadDir: uploadDir.path, keepExtensions: true },
+    formidable: { keepExtensions: true },
 })
 
-import * as koaBodyParser from "koa-bodyparser"
 const bodyParser = koaBodyParser()
 
 const app = new Koa()
 const router = new Router()
+
+app.use(bodyClean())
 
 app.use(cors())
 
