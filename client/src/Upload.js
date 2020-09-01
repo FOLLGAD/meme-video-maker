@@ -32,20 +32,27 @@ export default function Form({ setData }) {
             body: fd,
             method: "POST",
         })
-            .then((d) => d.json())
+            .then(async (d) => {
+                if (!d.ok) {
+                    throw await d.json()
+                }
+                return await d.json()
+            })
             .then((d) => {
                 setLoading(false)
                 setData({ res: d, images: files })
             })
             .catch((d) => {
                 setLoading(false)
-                setError(d.message)
+                console.log(d)
+                setError(d.message || d.error)
             })
     }
 
     return (
         <div>
             <form id="formed">
+                <p>Max allowed image size is 20MB</p>
                 <div>
                     <input
                         ref={filesInp}
@@ -55,7 +62,19 @@ export default function Form({ setData }) {
                         multiple
                     />
                 </div>
-                <div>{error}</div>
+                {error && (
+                    <div
+                        style={{
+                            background: "#f4e6e6",
+                            border: "1px solid #eee",
+                            borderRadius: 5,
+                            padding: "5px 10px",
+                            margin: "10px 0 0 0",
+                        }}
+                    >
+                        Error: {error}
+                    </div>
+                )}
                 <div style={{ paddingTop: 10 }}>
                     <button type="submit" onClick={submit} disabled={loading}>
                         {loading ? "Loading..." : "Go"}

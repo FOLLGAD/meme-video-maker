@@ -36,13 +36,14 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // linking directly to the S3 store where the imgs are held
     // https://cloud.google.com/vision/quotas
     // Maximum is 16/request
-    const chunks = chunkArray(imageObjects, 8)
+    const chunks = chunkArray(imageObjects, 16)
 
     const results: any[] = []
 
     // Do it synchronously instead of parallelly, since it
     // gives problems with RESOURCE_EXCEEDED: Bandwidth exhausted
     // Also, image req doesn't take too long either way
+
     for (const images of chunks) {
         console.log("Reading chunk...")
         try {

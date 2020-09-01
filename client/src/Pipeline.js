@@ -1,18 +1,6 @@
 import React, { useMemo } from "react"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 
-function arrayMove(arr1, old_index, new_index) {
-    let arr = arr1.slice()
-    if (new_index >= arr.length) {
-        var k = new_index - arr.length + 1
-        while (k--) {
-            arr.push(undefined)
-        }
-    }
-    arr.splice(new_index, 0, arr.splice(old_index, 1)[0])
-    return arr
-}
-
 export default function ({ setPipeline, pipeline, highlight, removeStage }) {
     const renderStage = (pipe) => {
         return (

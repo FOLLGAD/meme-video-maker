@@ -34,7 +34,17 @@ const dbThemeName = "4chan-themes"
 
 const koaBody = koaMultiBody({
     multipart: true,
-    formidable: { keepExtensions: true },
+    formidable: {
+        keepExtensions: true,
+        maxFileSize: 20 * 1024 * 1024, // 20mb is max uploaded filesize
+    },
+})
+const koaLargeBody = koaMultiBody({
+    multipart: true,
+    formidable: {
+        keepExtensions: true,
+        maxFileSize: 40 * 1024 * 1024, // 40mb for intros & outros and more
+    },
 })
 
 const bodyParser = koaBodyParser()
@@ -194,7 +204,7 @@ router
             success: true,
         }
     })
-    .post("/upload-file", koaBody, async (ctx) => {
+    .post("/upload-file", koaLargeBody, async (ctx) => {
         const { files } = ctx.request
         const { path, name } = files!.file
 
@@ -391,7 +401,7 @@ app.use(async (ctx, next) => {
         await next()
     } catch (err) {
         ctx.status = err.statusCode || err.status || 500
-        ctx.body = err.message
+        ctx.body = { error: err.message }
         ctx.app.emit("error", err, ctx)
     }
 })
