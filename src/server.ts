@@ -7,7 +7,6 @@ import { createReadStream, existsSync, writeFileSync } from "fs"
 import * as Koa from "koa"
 // setup multipart upload for koa
 import * as koaMultiBody from "koa-body"
-import * as bodyClean from "koa-body-clean"
 import * as koaBodyParser from "koa-bodyparser"
 import * as Router from "koa-router"
 import { file, FileResult } from "tmp-promise"
@@ -42,8 +41,6 @@ const bodyParser = koaBodyParser()
 
 const app = new Koa()
 const router = new Router()
-
-app.use(bodyClean())
 
 app.use(cors())
 
