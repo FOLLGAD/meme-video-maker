@@ -36,7 +36,7 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // linking directly to the S3 store where the imgs are held
     // https://cloud.google.com/vision/quotas
     // Maximum is 16/request
-    const chunks = chunkArray(imageObjects, 16)
+    const chunks = chunkArray(imageObjects, 8)
 
     const results: any[] = []
 
