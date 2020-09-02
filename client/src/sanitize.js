@@ -12,6 +12,10 @@ const replaceDict = [
         replace: "sh ",
     },
     {
+        regex: /dicks/,
+        replace: "dees ",
+    },
+    {
         regex: /dick/,
         replace: "peepee ",
     },
