@@ -2,6 +2,7 @@ import React, { useMemo, useReducer, useState } from "react"
 import EditImage from "./EditImage"
 import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
+import { preSanitize } from "./sanitize"
 
 function mapBlock(block) {
     const vert = block.boundingBox.vertices
@@ -30,8 +31,10 @@ function mapBlock(block) {
         .map((d) => d.trim())
         .join("\n")
 
+    const sanitizedText = preSanitize(text)
+
     return {
-        text,
+        text: sanitizedText,
         rect: {
             x: x - padding,
             y: y - padding,
