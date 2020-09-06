@@ -1,7 +1,11 @@
 const replaceDict = [
     {
         regex: /fucking/,
-        replace: "effing ",
+        replace: "effing",
+    },
+    {
+        regex: /fuckin/,
+        replace: "effin",
     },
     {
         regex: /fuck/,
@@ -29,7 +33,7 @@ const replaceDict = [
     },
     {
         regex: /bitch/,
-        replace: "b ",
+        replace: "bee ",
     },
     {
         regex: /retarded/,
