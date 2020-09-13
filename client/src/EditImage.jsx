@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react"
-import { standardPause } from "./constants"
+import React, {useEffect, useRef, useState} from "react"
+import {standardPause} from "./constants"
 import Pipeline from "./Pipeline"
 
 // Gets the mouse click position within the canvas
@@ -291,7 +291,7 @@ export default function FileImage({
             drawImage(src).then(() => {
                 drawOverlay()
             })
-    }, [blocks, src, ctx, pipeline, highlight])
+    }, [blocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
 
     const divRef = useRef()
 
@@ -315,7 +315,57 @@ export default function FileImage({
             document.removeEventListener("mousedown", onCanvasMouseDown)
             document.removeEventListener("mouseup", onCanvasMouseUp)
         }
-    }, [mouseDownAt, pipeline, scale])
+    }, [mouseDownAt, onCanvasMouseDown, onCanvasMouseUp, pipeline, scale])
+
+    const addStageButtons = (
+        <div style={{ marginBottom: 5 }}>
+            <button
+                onClick={() =>
+                    addStage({ type: "pause", secs: standardPause })
+                }
+            >
+                Pause
+            </button>
+            <button
+                onClick={() =>
+                    addStage({
+                        type: "reveal",
+                        rect: {
+                            x: 0,
+                            y: 0,
+                            width: canvasRef.current.width / scale,
+                            height: canvasRef.current.height / scale,
+                        },
+                    })
+                }
+            >
+                Reveal full img
+            </button>
+            <button
+                onClick={() =>
+                    addStage({
+                        type: "read",
+                        text: "",
+                        blockuntil: false,
+                        reveal: false,
+                        _index: null,
+                        added: [],
+                        rect: [],
+                    })
+                }
+                title="Manually add a tts voice line"
+            >
+                Custom TTS
+            </button>
+            {!["image/png", "image/jpeg"].includes(src.type) && (
+                <button
+                    onClick={() => addStage({ type: "gif", times: 1 })}
+                >
+                    Play GIF
+                </button>
+            )}
+        </div>
+    )
 
     return (
         <div style={{ display: "flex", userSelect: "none" }}>
@@ -341,53 +391,7 @@ export default function FileImage({
                     </label>
                     <hr />
                 </div>
-                <div style={{ marginBottom: 5 }}>
-                    <button
-                        onClick={() =>
-                            addStage({ type: "pause", secs: standardPause })
-                        }
-                    >
-                        Pause
-                    </button>
-                    <button
-                        onClick={() =>
-                            addStage({
-                                type: "reveal",
-                                rect: {
-                                    x: 0,
-                                    y: 0,
-                                    width: canvasRef.current.width / scale,
-                                    height: canvasRef.current.height / scale,
-                                },
-                            })
-                        }
-                    >
-                        Reveal full img
-                    </button>
-                    <button
-                        onClick={() =>
-                            addStage({
-                                type: "read",
-                                text: "",
-                                blockuntil: false,
-                                reveal: false,
-                                _index: null,
-                                added: [],
-                                rect: [],
-                            })
-                        }
-                        title="Manually add a tts voice line"
-                    >
-                        Custom TTS
-                    </button>
-                    {!["image/png", "image/jpeg"].includes(src.type) && (
-                        <button
-                            onClick={() => addStage({ type: "gif", times: 1 })}
-                        >
-                            Play GIF
-                        </button>
-                    )}
-                </div>
+                {addStageButtons}
                 <div ref={divRef}>
                     <Pipeline
                         pipeline={pipeline}
@@ -396,6 +400,7 @@ export default function FileImage({
                         removeStage={removeStage}
                     />
                 </div>
+                {addStageButtons}
             </div>
         </div>
     )
