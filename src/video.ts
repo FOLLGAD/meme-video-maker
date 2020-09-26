@@ -6,6 +6,43 @@ import { join } from "path"
 import { file, fileSync, FileResult, setGracefulCleanup } from "tmp-promise"
 import { synthSpeech } from "./synth"
 
+async function test() {
+    const d = await makeVids(
+        [
+            {
+                pipeline: [
+                    {
+                        type: "read",
+                        blockuntil: false,
+                        reveal: true,
+                        text: "Hello, my name is",
+                        joinNext: true,
+                        rect: [{ x: 0, y: 0, height: 10, width: 10 }],
+                    },
+                    {
+                        type: "read",
+                        blockuntil: false,
+                        reveal: true,
+                        joinNext: true,
+                        text: "Daniel and I am a stupid dumb robot and",
+                        rect: [{ x: 0, y: 50, height: 10, width: 10 }],
+                    },
+                    {
+                        type: "read",
+                        blockuntil: false,
+                        reveal: true,
+                        text: "I say peepee in poopoo",
+                        rect: [{ x: 0, y: 100, height: 10, width: 10 }],
+                    },
+                ],
+            },
+        ],
+        ["/home/emil/Pictures/4chan/alien memes.jpg"],
+        { voice: "daniel" }
+    )
+    console.log(d)
+}
+
 setGracefulCleanup()
 
 const blockColor = "black"
@@ -19,6 +56,7 @@ export interface Rec {
 
 export interface ReadStage {
     type: "read"
+    joinNext?: boolean
     rect: Rec[]
     text: string
     reveal: boolean
@@ -52,7 +90,7 @@ export type PipelineImg = {
 
 // Ffprobe
 // Usually takes ~40ms
-const probe = function (path) {
+const probe = function (path: string) {
     return new Promise((res, rej) => {
         ffmpeg.ffprobe(path, (err, data) => {
             if (err) rej(err)
@@ -88,7 +126,7 @@ async function parallell(imageReaders: PipelineImg[], settings: VideoSettings) {
 }
 
 async function serial(imageReaders: PipelineImg[], settings: VideoSettings) {
-    let arr: (string | null)[] = []
+    const arr: (string | null)[] = []
     for (let i = 0; i < imageReaders.length; i++) {
         console.log("Index:", i)
         const result = await makeImageThing(imageReaders[i], settings)
@@ -121,7 +159,7 @@ async function convToDims(
     )
     if (vidStream) return vidPAth
 
-    let f = await file({ postfix: ".mp4" })
+    const f = await file({ postfix: ".mp4" })
 
     await new Promise((r, x) =>
         ffmpeg(vidPAth)
@@ -158,7 +196,7 @@ export async function makeVids(
     const filteredPipelines = pipelines.filter(
         (p) => !p.settings || !p.settings.showFirst
     )
-    let vidsMidOrNull = await serial(filteredPipelines, videoSettings)
+    const vidsMidOrNull = await serial(filteredPipelines, videoSettings)
     let vidsMid = vidsMidOrNull.filter(notEmpty)
 
     if (videoSettings.transition)
@@ -180,7 +218,7 @@ export async function makeVids(
         out = songout
     }
 
-    let vidsFull = [out.path]
+    const vidsFull = [out.path]
 
     if (videoSettings.intro)
         vidsFull.unshift(
@@ -204,8 +242,8 @@ export async function makeVids(
     )
 
     if (introVids.length > 0) {
-        let vidsMidOrNull = await serial(introVids, videoSettings)
-        let vidsMid = vidsMidOrNull.filter(notEmpty)
+        const vidsMidOrNull = await serial(introVids, videoSettings)
+        const vidsMid = vidsMidOrNull.filter(notEmpty)
         vidsFull.unshift(...vidsMid)
     }
 
@@ -243,7 +281,7 @@ async function makeImageThing(
     blockingCtx.fillStyle = blockColor
     blockingCtx.fillRect(0, 0, width, height)
 
-    let vids: string[] = []
+    const vids: string[] = []
 
     for (let i = 0; i < pipeline.length; i++) {
         console.time("render_stage")
@@ -304,7 +342,7 @@ async function makeImageThing(
 
                 const f: FileResult = await new Promise(async (res, rej) => {
                     const f = await file({ postfix: ".mp4" })
-                    let videoInfo: any = await probe(speechFile)
+                    const speechInfo: any = await probe(speechFile)
 
                     const pngf = await file({ postfix: ".png" })
 
@@ -333,7 +371,11 @@ async function makeImageThing(
                         .audioCodec("aac")
                         .audioFrequency(24000)
                         .audioChannels(2)
-                        .duration(videoInfo.format.duration)
+                        .duration(
+                            stage.joinNext
+                                ? speechInfo.format.duration - 0.5
+                                : speechInfo.format.duration
+                        )
                         .outputOptions(["-pix_fmt yuv420p", "-r 25"])
                         .save(f.path)
                         .on("error", (err) =>
@@ -417,7 +459,7 @@ async function makeImageThing(
             const times = Math.min(Math.abs(stage.times), 10)
 
             const f: FileResult = await new Promise(async (res, rej) => {
-                let f = await file({ postfix: ".mp4" })
+                const f = await file({ postfix: ".mp4" })
 
                 ffmpeg(pipelineObj.image)
                     // .inputOptions(["-r 25"])
@@ -467,12 +509,12 @@ async function makeImageThing(
 }
 
 function getConcat(videoPaths) {
-    let txt = fileSync()
-    let tempPath = txt.name
+    const txt = fileSync()
+    const tempPath = txt.name
 
     writeFileSync(tempPath, videoPaths.map((d) => `file '${d}'\n`).join(""))
 
-    let f = ffmpeg()
+    const f = ffmpeg()
         .input(tempPath)
         .inputOptions(["-f concat", "-safe 0", "-r 25"])
     return f
@@ -539,7 +581,7 @@ function reencodedConcat(videoPaths: string[], outPath: string): Promise<void> {
 */
 function combineVideoAudio(videoPath, audioPath, outPath) {
     return new Promise(async (res, rej) => {
-        let videoInfo: any = await probe(videoPath)
+        const videoInfo: any = await probe(videoPath)
 
         ffmpeg(videoPath)
             .videoCodec("copy")
