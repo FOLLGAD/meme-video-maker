@@ -1,21 +1,22 @@
 import * as cors from "@koa/cors"
 // AWS
 import * as AWS from "aws-sdk"
-import { ScanOutput } from "aws-sdk/clients/dynamodb"
-import { ListObjectsOutput } from "aws-sdk/clients/s3"
-import { createReadStream, existsSync, writeFileSync } from "fs"
+import {ScanOutput} from "aws-sdk/clients/dynamodb"
+import {ListObjectsOutput} from "aws-sdk/clients/s3"
+// Load env variables
+import {config} from "dotenv"
+import {createReadStream, existsSync, writeFileSync} from "fs"
 import * as Koa from "koa"
 // setup multipart upload for koa
 import * as koaMultiBody from "koa-body"
 import * as koaBodyParser from "koa-bodyparser"
 import * as Router from "koa-router"
-import { file, FileResult } from "tmp-promise"
-import { v4 as uuidv4 } from "uuid"
-import { makeVids, normalizeVideo, Pipeline } from "./video"
-import { readImages } from "./vision"
+import {file} from "tmp-promise"
+import {v4 as uuidv4} from "uuid"
+import {makeVids, normalizeVideo, Pipeline} from "./video"
+import {readImages} from "./vision"
 
-// Load env variables
-require("dotenv").config()
+config()
 
 // AWS S3
 const s3 = new AWS.S3()
@@ -54,12 +55,12 @@ const router = new Router()
 
 app.use(cors())
 
-const cache: Map<string, FileResult> = new Map()
+const cache = new Map()
 
-const queue: Function[] = []
+const queue: (() => Promise<void>)[] = []
 let currentlyRunning = false
 
-async function addToQueue(fn: Function) {
+async function addToQueue(fn: () => Promise<void>) {
     queue.push(fn)
     if (!currentlyRunning) {
         currentlyRunning = true
@@ -79,8 +80,8 @@ async function addToQueue(fn: Function) {
 }
 
 async function getFile(s3_key: string): Promise<string> {
-    if (cache.has(s3_key) && existsSync(cache.get(s3_key)!.path)) {
-        return cache.get(s3_key)!.path
+    if (cache.has(s3_key) && existsSync(cache.get(s3_key).path)) {
+        return cache.get(s3_key).path
     } else {
         return await new Promise((res, rej) =>
             s3.getObject(
@@ -92,8 +93,7 @@ async function getFile(s3_key: string): Promise<string> {
                     if (err || !data.Body) return rej(err)
 
                     const f = await file({ postfix: s3_key })
-                    //@ts-ignore because it always works anyways
-                    writeFileSync(f.path, data.Body)
+                    writeFileSync(f.path, data.Body as any)
                     cache.set(s3_key, f)
 
                     res(f.path)
@@ -103,18 +103,22 @@ async function getFile(s3_key: string): Promise<string> {
     }
 }
 
+// Produces a time-based name that also has a random component after.
+// Sorting these names (Ex: Amazon S3) will make the newest file appear first until year 2100
 const generateName = () => {
     const now = new Date()
-    const num = parseInt(
+    const currentDate = parseInt(
         (now.getUTCFullYear() - 2000).toString().padStart(2, "0") +
             now.getUTCMonth().toString().padStart(2, "0") +
             now.getUTCDate().toString().padStart(2, "0") +
             now.getUTCHours().toString().padStart(2, "0") +
             now.getUTCMinutes().toString().padStart(2, "0")
     )
+    // CurrentDate = YYYYMMDDHHmm
+    const nextCentury = 9911312359
     return (
         "4chan-" +
-        (9911312359 - num).toString(36) + // Get the time until next century, in base 36
+        (nextCentury - currentDate).toString(36) + // Get the time until next century, in base 36
         "-" +
         uuidv4().slice(0, 8) +
         ".mp4"
@@ -123,7 +127,7 @@ const generateName = () => {
 
 const logDate = () => new Date().toLocaleString()
 
-async function makeVid(rawSet, pipeline: Pipeline[], images) {
+async function makeVid(rawSet, pipeline: Pipeline[], images): Promise<void> {
     const settings = {
         ...rawSet,
         intro: rawSet.intro ? await getFile(rawSet.intro) : undefined,
@@ -144,7 +148,7 @@ async function makeVid(rawSet, pipeline: Pipeline[], images) {
         console.log(logDate(), "Video finished on ", vid)
         const now = new Date()
 
-        let expires = new Date()
+        const expires = new Date()
         expires.setMonth(now.getMonth() + 1)
 
         const name = generateName()
@@ -157,7 +161,7 @@ async function makeVid(rawSet, pipeline: Pipeline[], images) {
                     Key: name,
                     Expires: expires, // HTTP-date
                 },
-                (err, data) => (err ? rej(err) : res(data))
+                (err) => (err ? rej(err) : res())
             )
         })
     })
@@ -170,7 +174,7 @@ const parseFiles = (info: any[], files): { id: number; image: string }[] => {
     }
 
     return info.map((a) => {
-        let file = files.files[a.id]
+        const file = files.files[a.id]
         if (file) {
             return { image: file.path, id: parseInt(a.id) }
         } else {
@@ -206,7 +210,8 @@ router
     })
     .post("/upload-file", koaLargeBody, async (ctx) => {
         const { files } = ctx.request
-        const { path, name } = files!.file
+        if (!files) throw new Error("Please send a file")
+        const { path, name } = files.file
 
         try {
             const ext = name.substr(-4)
@@ -296,7 +301,9 @@ router
             }
         )
 
-        const keys = Contents!.map((d) => d.Key!)
+        if (!Contents) throw new Error("Couldn't list objects")
+
+        const keys: string[] = Contents.map((d) => d.Key || "")
 
         // Return all the songs and videos in the files folder
         ctx.body = {
