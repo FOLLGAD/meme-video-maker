@@ -125,11 +125,6 @@ const stringsToSSML = (strings: string[]) => `
     </speak>
 `
 
-synthDaniel([
-    "hello, my name &lt; is daniel &gt; haha.",
-    "testing &amp; &amp; &amp; &amp; which is and",
-]).then(console.log)
-
 // Takes an array of strings and returns a file
 export async function synthDaniel(
     strings: string[]
@@ -138,21 +133,35 @@ export async function synthDaniel(
 
     const xmlEscaped = strings.map((s) => encodeXML(s))
 
+    let data
+
+    let tries = 0
+    while (true) {
+        try {
+            data = await fetch("http://tts.redditvideomaker.com/synthesize", {
+                method: "POST",
+                body: JSON.stringify({
+                    string: stringsToSSML(xmlEscaped),
+                }),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }).then((r) => r.json())
+
+            break
+        } catch (error) {
+            tries++
+            if (tries > 5) throw new Error("Daniel failed a lot")
+            console.error("Daniel failed for some reason")
+            console.error(error)
+            await new Promise((r) => setTimeout(r, 500)) // wait 500ms before retrying
+        }
+    }
+
     let {
         bookmarks,
         base64audio,
-    }: { bookmarks: string; base64audio: string } = await fetch(
-        "http://tts.redditvideomaker.com/synthesize",
-        {
-            method: "POST",
-            body: JSON.stringify({
-                string: stringsToSSML(xmlEscaped),
-            }),
-            headers: {
-                "Content-Type": "application/json",
-            },
-        }
-    ).then((r) => r.json())
+    }: { bookmarks: string; base64audio: string } = data
 
     // Save audio as binary
     fs.writeFileSync(
