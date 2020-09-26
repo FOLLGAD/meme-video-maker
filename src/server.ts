@@ -103,18 +103,22 @@ async function getFile(s3_key: string): Promise<string> {
     }
 }
 
+// Produces a time-based name that also has a random component after.
+// Sorting these names (Ex: Amazon S3) will make the newest file appear first until year 2100
 const generateName = () => {
     const now = new Date()
-    const num = parseInt(
+    const currentDate = parseInt(
         (now.getUTCFullYear() - 2000).toString().padStart(2, "0") +
             now.getUTCMonth().toString().padStart(2, "0") +
             now.getUTCDate().toString().padStart(2, "0") +
             now.getUTCHours().toString().padStart(2, "0") +
             now.getUTCMinutes().toString().padStart(2, "0")
     )
+    // CurrentDate = YYYYMMDDHHmm
+    const nextCentury = 9911312359
     return (
         "4chan-" +
-        (9911312359 - num).toString(36) + // Get the time until next century, in base 36
+        (nextCentury - currentDate).toString(36) + // Get the time until next century, in base 36
         "-" +
         uuidv4().slice(0, 8) +
         ".mp4"

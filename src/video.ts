@@ -295,8 +295,8 @@ async function makeImageThing(
                 ffmpegDone = false
             try {
                 console.time("synth_speech")
-                const speechFile = await synthSpeech({
-                    text: stage.text,
+                const { path: speechFile } = await synthSpeech({
+                    text: [stage.text],
                     voice: videoSettings.voice || "daniel",
                 })
                 console.timeEnd("synth_speech")
