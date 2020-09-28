@@ -35,6 +35,7 @@ export default function Form() {
 	return (
 		<div>
 			<form id="formed">
+                <p>Max allowed image size is 40MB</p>
 				<div>{error ? error : ""}</div>
 				<div>
 					<input ref={filesInp} accept=".mp4,.mp3" type="file" />
