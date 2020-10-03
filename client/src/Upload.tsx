@@ -1,5 +1,15 @@
 import React, { useRef, useState } from "react"
 import apiFetch from "./apiFetch"
+import { v4 as uuidv4 } from "uuid"
+
+// `AWS.region = "..."` disables autocomplete in VS Code for some reason!! wtf
+window["AWS"].region = "eu-central-1" // Region
+window["AWS"].credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
+})
+const s3 = new AWS.S3()
+
+const MemesBucket = "carp-memes"
 
 export default function Form({ setData }) {
     const filesInp = useRef(null)
@@ -9,24 +19,29 @@ export default function Form({ setData }) {
     const submit = (event) => {
         event.preventDefault()
 
-        const fd = new FormData()
         const files = filesInp.current.files
         if (files.length === 0) {
             return
         }
-        setLoading(true)
-        setError(null)
-
-        // Append files to formdata
-        const info = []
-        let i = 0
         for (const file of files) {
-            fd.append("files", file, i.toString())
-            info.push({ id: i.toString() })
-            i++
+            /*
+                TODO:
+                - add the cognito pool id somehow
+                - upload all images there
+                - send the urls to the carp API instead of the images
+                - change the api to accept urls for google vision
+                - same as above but for the video rendering part
+            */
+            const origname = file.name
+            const key = uuidv4()
+            s3.putObject({
+                Bucket: MemesBucket,
+                Key: key,
+                Metadata: {
+                    filename: origname,
+                },
+            })
         }
-
-        fd.append("info", JSON.stringify(info))
 
         apiFetch("/vision", {
             body: fd,
