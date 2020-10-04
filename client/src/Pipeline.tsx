@@ -52,7 +52,7 @@ export default function ({ setPipeline, pipeline, highlight, removeStage }) {
                                 fontSize: 15,
                                 minWidth: 300,
                             }}
-                            rows="3"
+                            rows={3}
                             onChange={(e) =>
                                 updateStage(stage.id, {
                                     ...stage,
@@ -153,8 +153,8 @@ export default function ({ setPipeline, pipeline, highlight, removeStage }) {
 
     // Splits the pipeline up in substages, where every type: "div" becomes a separator
     const chunkedPipeline = useMemo(() => {
-        let arr = []
-        let work = []
+        let arr: any[] = []
+        let work: any[] = []
         pipeline.forEach((pipe) => {
             if (pipe.type === "div") {
                 arr.push(work)

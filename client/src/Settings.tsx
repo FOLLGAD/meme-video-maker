@@ -4,9 +4,14 @@ import Modal from "react-modal"
 
 Modal.setAppElement("#root")
 
+interface Theme {
+    themeId: string
+    name: string
+}
+
 export default function ({ settings, pipeline, dispatchSettings, onSubmit }) {
     const [files, setFiles] = useState({ videos: [], songs: [] })
-    const [themes, setThemes] = useState([])
+    const [themes, setThemes] = useState<Theme[]>([])
 
     useEffect(() => {
         apiFetch("/files")

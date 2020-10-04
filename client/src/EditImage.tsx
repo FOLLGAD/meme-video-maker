@@ -1,5 +1,5 @@
-import React, {useEffect, useRef, useState} from "react"
-import {standardPause} from "./constants"
+import React, { useEffect, useRef, useState } from "react"
+import { standardPause } from "./constants"
 import Pipeline from "./Pipeline"
 
 // Gets the mouse click position within the canvas
@@ -31,21 +31,32 @@ export default function FileImage({
     setSettings,
     pipeline,
     setPipeline,
+}: {
+    src: File
+    blocks: any[]
+    settings: any
+    setSettings: any
+    pipeline: any[]
+    setPipeline: any
 }) {
-    const canvasRef = useRef(null)
-    const [ctx, setCtx] = useState(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null)
     const [scale, setScale] = useState(1)
 
     useEffect(() => {
-        setCtx(canvasRef.current.getContext("2d"))
+        if (canvasRef.current) {
+            setCtx(canvasRef.current.getContext("2d"))
+        }
     }, [])
 
     const drawImage = (src) => {
+        const canv = canvasRef.current
+        if (!ctx || !canv) return Promise.reject()
+
         return new Promise((res) => {
             // https://stackoverflow.com/questions/6775767/how-can-i-draw-an-image-from-the-html5-file-api-on-canvas
             const img = new Image()
             img.onload = () => {
-                const canv = canvasRef.current
                 const maxWidth = 900
                 const scale = Math.min(1, maxWidth / img.width)
                 canv.width = img.width * scale
@@ -69,6 +80,9 @@ export default function FileImage({
         pipeline.some((s) => s.type === "read" && s.added.includes(i))
 
     const drawOverlay = () => {
+        const canv = canvasRef.current
+        if (!ctx || !canv) return
+
         // Draw reveal blocks
         pipeline.forEach((stage) => {
             if (stage.type === "reveal") {
@@ -86,15 +100,12 @@ export default function FileImage({
                         0,
                         Math.min(
                             rect.x + rect.width - size - margin,
-                            canvasRef.current.width / scale - size
+                            canv.width / scale - size
                         )
                     ),
                     y: Math.max(
                         0,
-                        Math.min(
-                            rect.y + margin,
-                            canvasRef.current.height / scale - size
-                        )
+                        Math.min(rect.y + margin, canv.height / scale - size)
                     ),
                 }
                 ctx.fillRect(blackBox.x, blackBox.y, size, size)
@@ -123,7 +134,9 @@ export default function FileImage({
         })
     }
 
-    const [mouseDownAt, setMouseDownAt] = useState(null)
+    const [mouseDownAt, setMouseDownAt] = useState<[number, number] | null>(
+        null
+    )
     const onCanvasMouseDown = (event) => {
         const [mouseX, mouseY] = getCursorPosition(
             canvasRef.current,
@@ -147,7 +160,7 @@ export default function FileImage({
                   { type: "div" },
               ])
 
-    const addStages = (stages) =>
+    const addStages = (stages: any[]) =>
         setPipeline([
             ...pipeline,
             ...stages.map((stage) => ({ ...stage, id: counter++ })),
@@ -168,7 +181,7 @@ export default function FileImage({
         ])
     }
 
-    const [highlight, setHighlight] = useState(null)
+    const [highlight, setHighlight] = useState<number | null>(null)
 
     const [shiftDown, setShift] = useState(false)
 
@@ -180,6 +193,9 @@ export default function FileImage({
     document.addEventListener("keyup", keyHandler)
 
     const onCanvasMouseUp = (event) => {
+        const canv = canvasRef.current
+        if (!canv) return
+
         const [mouseX, mouseY] = getCursorPosition(
             canvasRef.current,
             event
@@ -199,15 +215,15 @@ export default function FileImage({
 
         if (
             rect.x + rect.width < 0 ||
-            rect.x > canvasRef.current.width / scale ||
+            rect.x > canv.width / scale ||
             rect.y + rect.height < 0 ||
-            rect.y > canvasRef.current.height / scale
+            rect.y > canv.height / scale
         )
             return
 
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
             // Add a reveal rect
-            let arr = []
+            let arr: { type: string; [key: string]: any }[] = []
 
             arr.push({ type: "reveal", rect })
             arr.push({ type: "div" })
@@ -293,18 +309,21 @@ export default function FileImage({
             })
     }, [blocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
 
-    const divRef = useRef()
+    const divRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
+        const divCur = divRef.current
+        if (!divCur) return
+
         const stop = (e) => {
             e.stopPropagation()
             setMouseDownAt(null)
         }
-        divRef.current.addEventListener("mousedown", stop)
-        divRef.current.addEventListener("mouseup", stop)
+        divCur.addEventListener("mousedown", stop)
+        divCur.addEventListener("mouseup", stop)
         return () => {
-            divRef.current.removeEventListener("mousedown", stop)
-            divRef.current.removeEventListener("mouseup", stop)
+            divCur.removeEventListener("mousedown", stop)
+            divCur.removeEventListener("mouseup", stop)
         }
     }, [divRef])
 
@@ -320,9 +339,7 @@ export default function FileImage({
     const addStageButtons = (
         <div style={{ marginBottom: 5 }}>
             <button
-                onClick={() =>
-                    addStage({ type: "pause", secs: standardPause })
-                }
+                onClick={() => addStage({ type: "pause", secs: standardPause })}
             >
                 Pause
             </button>
@@ -333,8 +350,12 @@ export default function FileImage({
                         rect: {
                             x: 0,
                             y: 0,
-                            width: canvasRef.current.width / scale,
-                            height: canvasRef.current.height / scale,
+                            width: canvasRef.current
+                                ? canvasRef.current.width / scale
+                                : 0,
+                            height: canvasRef.current
+                                ? canvasRef.current.height / scale
+                                : 0,
                         },
                     })
                 }
@@ -358,9 +379,7 @@ export default function FileImage({
                 Custom TTS
             </button>
             {!["image/png", "image/jpeg"].includes(src.type) && (
-                <button
-                    onClick={() => addStage({ type: "gif", times: 1 })}
-                >
+                <button onClick={() => addStage({ type: "gif", times: 1 })}>
                     Play GIF
                 </button>
             )}

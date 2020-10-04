@@ -12,7 +12,7 @@ function App() {
 
     const loadData = ({ images, res }) => {
         setRes(res)
-        setImages(Array.from(images))
+        // setImages(Array.from(images))
         setDirty(true)
     }
 
@@ -28,7 +28,7 @@ function App() {
         const fd = new FormData()
 
         // Append files to formdata
-        const info = []
+        const info: any[] = []
         let i = 0
         for (const file of images) {
             fd.append("files", file, i.toString())

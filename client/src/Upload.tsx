@@ -1,29 +1,43 @@
 import React, { useRef, useState } from "react"
 import apiFetch from "./apiFetch"
 import { v4 as uuidv4 } from "uuid"
+/// <reference types="aws-sdk" />
+import * as AWS from "aws-sdk"
+import { CognitoIdentityCredentials, Credentials } from "aws-sdk"
 
 // `AWS.region = "..."` disables autocomplete in VS Code for some reason!! wtf
-window["AWS"].region = "eu-central-1" // Region
-window["AWS"].credentials = new AWS.CognitoIdentityCredentials({
-    IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
+
+// AWS.region = "eu-central-1" // Region
+// AWS.credentials = new AWS.CognitoIdentityCredentials({
+//     IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
+// })
+const s3 = new AWS.S3({
+    region: "eu-central-1",
+    credentials: new CognitoIdentityCredentials({
+        IdentityPoolId: "f9d40dab-3659-4f21-8e65-dbf590212d7b",
+    }),
 })
-const s3 = new AWS.S3()
 
 const MemesBucket = "carp-memes"
 
-export default function Form({ setData }) {
-    const filesInp = useRef(null)
+export default function Form({ setData }: { setData: (data: any) => void }) {
+    const filesInp = useRef<HTMLInputElement>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(false)
 
-    const submit = (event) => {
+    const submit = async (
+        event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    ) => {
         event.preventDefault()
 
-        const files = filesInp.current.files
+        if (!filesInp.current || !filesInp.current.files) return
+
+        const { files } = filesInp.current
         if (files.length === 0) {
             return
         }
-        for (const file of files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i]
             /*
                 TODO:
                 - add the cognito pool id somehow
@@ -34,34 +48,45 @@ export default function Form({ setData }) {
             */
             const origname = file.name
             const key = uuidv4()
-            s3.putObject({
-                Bucket: MemesBucket,
-                Key: key,
-                Metadata: {
-                    filename: origname,
-                },
-            })
+            const val = await new Promise<AWS.S3.PutObjectOutput>(
+                (res, rej) => {
+                    s3.putObject(
+                        {
+                            Bucket: MemesBucket,
+                            Key: key,
+                            Body: file,
+                            Metadata: {
+                                filename: origname,
+                            },
+                        },
+                        (err, data) => {
+                            err ? rej(err) : res(data)
+                        }
+                    )
+                }
+            )
+            console.log("Etag:", val.ETag)
         }
 
-        apiFetch("/vision", {
-            body: fd,
-            method: "POST",
-        })
-            .then(async (d) => {
-                if (!d.ok) {
-                    throw await d.json()
-                }
-                return await d.json()
-            })
-            .then((d) => {
-                setLoading(false)
-                setData({ res: d, images: files })
-            })
-            .catch((d) => {
-                setLoading(false)
-                console.log(d)
-                setError(d.message || d.error)
-            })
+        // apiFetch("/vision", {
+        //     // body: fd,
+        //     method: "POST",
+        // })
+        //     .then(async (d) => {
+        //         if (!d.ok) {
+        //             throw await d.json()
+        //         }
+        //         return await d.json()
+        //     })
+        //     .then((d) => {
+        //         setLoading(false)
+        //         setData({ res: d, images: files })
+        //     })
+        //     .catch((d) => {
+        //         setLoading(false)
+        //         console.log(d)
+        //         setError(d.message || d.error)
+        //     })
     }
 
     return (

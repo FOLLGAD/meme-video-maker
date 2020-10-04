@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import apiFetch, { apiUrl } from "./apiFetch"
 
 export default function () {
-    const [videos, setVids] = useState(null)
+    const [videos, setVids] = useState<AWS.S3.Object[]>([])
 
     const getVids = () => {
         apiFetch("/vids")
@@ -20,7 +20,7 @@ export default function () {
             <div className="videolist">
                 {videos
                     ? videos.map((vid) => {
-                          let d = new Date(vid.LastModified)
+                          let d = vid.LastModified || new Date()
                           return (
                               <a
                                   key={vid.Key}
