@@ -1,20 +1,20 @@
 import * as cors from "@koa/cors"
 // AWS
 import * as AWS from "aws-sdk"
-import {ScanOutput} from "aws-sdk/clients/dynamodb"
-import {ListObjectsOutput} from "aws-sdk/clients/s3"
+import { ScanOutput } from "aws-sdk/clients/dynamodb"
+import { ListObjectsOutput } from "aws-sdk/clients/s3"
 // Load env variables
-import {config} from "dotenv"
-import {createReadStream, existsSync, writeFileSync} from "fs"
+import { config } from "dotenv"
+import { createReadStream, existsSync, writeFileSync } from "fs"
 import * as Koa from "koa"
 // setup multipart upload for koa
 import * as koaMultiBody from "koa-body"
 import * as koaBodyParser from "koa-bodyparser"
 import * as Router from "koa-router"
-import {file} from "tmp-promise"
-import {v4 as uuidv4} from "uuid"
-import {makeVids, normalizeVideo, Pipeline} from "./video"
-import {readImages} from "./vision"
+import { file } from "tmp-promise"
+import { v4 as uuidv4 } from "uuid"
+import { makeVids, normalizeVideo, Pipeline } from "./video"
+import { readImages } from "./vision"
 
 config()
 
@@ -30,6 +30,7 @@ const dynamodb = new AWS.DynamoDB({
 // S3 Buckets
 const Bucket = "4chan-app"
 const FilesBucket = "4chan-files"
+const MemesBucket = "carp-memes"
 // DynamoDB table
 const dbThemeName = "4chan-themes"
 
@@ -184,6 +185,28 @@ const parseFiles = (info: any[], files): { id: number; image: string }[] => {
 }
 
 router
+    // .get("/signed-uploads", async (ctx) => {
+    //     let amount = ctx.query.amount || 1
+    //     let a: string[] = []
+    //     try {
+    //         for (let i = 0; i < amount; i++) {
+    //             let key = uuidv4()
+    //             let p: string = await new Promise((res, rej) => {
+    //                 s3.getSignedUrl(
+    //                     "putObject",
+    //                     { Bucket: MemesBucket, Key: key },
+    //                     (err, url) => {
+    //                         err ? rej(err) : res(url)
+    //                     }
+    //                 )
+    //             })
+    //             a.push(p)
+    //         }
+    //     } catch (err) {
+    //         ctx.status = 500
+    //         ctx.body = { error: "disdn't owrk for some reason" }
+    //     }
+    // })
     .post("/vision", koaBody, async (ctx) => {
         // id corresponds to an entry
         const { files, body } = ctx.request

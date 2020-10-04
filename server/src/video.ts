@@ -6,43 +6,6 @@ import { join } from "path"
 import { file, fileSync, FileResult, setGracefulCleanup } from "tmp-promise"
 import { synthSpeech } from "./synth"
 
-async function test() {
-    const d = await makeVids(
-        [
-            {
-                pipeline: [
-                    {
-                        type: "read",
-                        blockuntil: false,
-                        reveal: true,
-                        text: "Hello, my name is",
-                        joinNext: true,
-                        rect: [{ x: 0, y: 0, height: 10, width: 10 }],
-                    },
-                    {
-                        type: "read",
-                        blockuntil: false,
-                        reveal: true,
-                        joinNext: true,
-                        text: "Daniel and I am a stupid dumb robot and",
-                        rect: [{ x: 0, y: 50, height: 10, width: 10 }],
-                    },
-                    {
-                        type: "read",
-                        blockuntil: false,
-                        reveal: true,
-                        text: "I say peepee in poopoo",
-                        rect: [{ x: 0, y: 100, height: 10, width: 10 }],
-                    },
-                ],
-            },
-        ],
-        ["/home/emil/Pictures/4chan/alien memes.jpg"],
-        { voice: "daniel" }
-    )
-    console.log(d)
-}
-
 setGracefulCleanup()
 
 const blockColor = "black"

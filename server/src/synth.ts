@@ -1,11 +1,9 @@
 // This file is for the tts calls
 
 import * as fs from "fs"
-import { file } from "tmp-promise"
 import * as latinize from "latinize"
-
-import * as textToSpeech from "@google-cloud/text-to-speech"
 import fetch from "node-fetch"
+import { file } from "tmp-promise"
 
 export function synthSpeech({
     text,
