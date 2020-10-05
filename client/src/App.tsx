@@ -6,13 +6,13 @@ import apiFetch from "./apiFetch"
 import VideoList from "./VideoList"
 
 function App() {
-    const [images, setImages] = useState(null)
+    const [images, setImages] = useState<any[] | null>(null)
     const [res, setRes] = useState(null)
     const [dirty, setDirty] = useState(false)
 
     const loadData = ({ images, res }) => {
         setRes(res)
-        // setImages(Array.from(images))
+        setImages(Array.from(images))
         setDirty(true)
     }
 
