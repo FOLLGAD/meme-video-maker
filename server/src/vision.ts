@@ -27,10 +27,6 @@ function chunkArray<T>(myArray: T[], chunk_size: number): T[][] {
     return tempArray
 }
 
-function flat<T>(arr: T[][]): T[] {
-    return arr.reduce((flat, val) => flat.concat(val), [])
-}
-
 export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // TODO: use { image: { source: "http://dsa.com/dsa.png" } }
     // linking directly to the S3 store where the imgs are held

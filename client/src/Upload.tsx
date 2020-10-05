@@ -1,21 +1,32 @@
-import React, { useRef, useState } from "react"
-import apiFetch from "./apiFetch"
-import { v4 as uuidv4 } from "uuid"
 /// <reference types="aws-sdk" />
-import * as AWS from "aws-sdk"
-import { CognitoIdentityCredentials, Credentials } from "aws-sdk"
+import AWS from "aws-sdk"
+import { CognitoIdentityCredentials } from "aws-sdk"
+import React, { useRef, useState } from "react"
+import { v4 as uuidv4 } from "uuid"
 
 // `AWS.region = "..."` disables autocomplete in VS Code for some reason!! wtf
 
-// AWS.region = "eu-central-1" // Region
-// AWS.credentials = new AWS.CognitoIdentityCredentials({
-//     IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
-// })
+AWS.config.update({
+    region: "eu-central-1", // Region
+    credentials: new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
+    }),
+})
+AWS.config = new AWS.Config()
+AWS.config.region = "eu-central-1"
+AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
+})
 const s3 = new AWS.S3({
     region: "eu-central-1",
     credentials: new CognitoIdentityCredentials({
         IdentityPoolId: "f9d40dab-3659-4f21-8e65-dbf590212d7b",
     }),
+})
+s3.config = new AWS.Config()
+s3.config.region = "eu-central-1"
+s3.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: "eu-central-1:f9d40dab-3659-4f21-8e65-dbf590212d7b",
 })
 
 const MemesBucket = "carp-memes"
