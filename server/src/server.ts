@@ -38,7 +38,7 @@ const koaBody = koaMultiBody({
     multipart: true,
     formidable: {
         keepExtensions: true,
-        maxFileSize: 200 * 1024 * 1024, // 200mb is max uploaded filesize
+        maxFileSize: 1000 * 1024 * 1024, // 1000mb is max uploaded filesize
     },
 })
 const koaLargeBody = koaMultiBody({
