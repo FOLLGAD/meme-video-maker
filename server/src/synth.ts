@@ -5,6 +5,10 @@ import * as latinize from "latinize"
 import fetch from "node-fetch"
 import { file } from "tmp-promise"
 
+function cleanText(text: string): string {
+    return text.replace(/\*/g, " ")
+}
+
 export function synthSpeech({
     text,
     voice,
@@ -13,6 +17,7 @@ export function synthSpeech({
     voice: string
 }): Promise<{ path: string; segments: string[] }> {
     text = text.map((t) => latinize(t))
+    text = text.map(cleanText)
 
     if (text.length === 0 || (text.length === 1 && text[0].length === 0)) {
         // If no letter or number is in text, don't produce it
