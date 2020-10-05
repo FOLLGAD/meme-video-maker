@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import apiFetch, { apiUrl } from "./apiFetch"
 
 export default function () {
-    const [videos, setVids] = useState<AWS.S3.Object[]>([])
+    const [videos, setVids] = useState<any[]>([])
 
     const getVids = () => {
         apiFetch("/vids")
