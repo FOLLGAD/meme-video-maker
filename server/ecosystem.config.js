@@ -10,12 +10,12 @@ module.exports = {
 
     deploy: {
         production: {
-            key: "~/.ssh/redditors-expansion.pem",
+            key: "~/.ssh/redditors-new.pem",
             user: "ubuntu",
             host: "image.redditvideomaker.com",
             ref: "origin/master",
             repo: "git@github.com:FOLLGAD/carp.git",
-            path: "~/carp/server",
+            path: "/home/ubuntu/carp/server",
             "pre-deploy-local": "",
             "post-deploy": ["npm i", "npm run build"],
             "pre-setup": "",
