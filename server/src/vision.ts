@@ -27,10 +27,6 @@ function chunkArray<T>(myArray: T[], chunk_size: number): T[][] {
     return tempArray
 }
 
-function flat<T>(arr: T[][]): T[] {
-    return arr.reduce((flat, val) => flat.concat(val), [])
-}
-
 export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
     // TODO: use { image: { source: "http://dsa.com/dsa.png" } }
     // linking directly to the S3 store where the imgs are held
@@ -63,27 +59,36 @@ export async function readImages(imageObjects: ImageObject[]): Promise<any[]> {
                 console.log("Chunk came up empty")
             }
         } catch (err) {
-            console.error("chunk failed")
             console.error(err)
+            console.error("chunk failed, trying doing it one at a time")
+            try {
+                for (let i = 0; i < images.length; i++) {
+                    // Try one req for each image
+                    const image = images[i]
+                    const res = await client.batchAnnotateImages({
+                        requests: [
+                            {
+                                features: [{ type: "TEXT_DETECTION" }],
+                                image: {
+                                    content: readFileSync(image.image),
+                                },
+                                // To avoid english chars showing up as cyrillic: (only happened once, but it was a bitch to debug)
+                                imageContext: { languageHints: ["en"] },
+                            },
+                        ],
+                    })
+                    if (res[0]?.responses) {
+                        results.push(...res[0].responses)
+                    } else {
+                        console.log("Chunk came up empty")
+                    }
+                }
+            } catch (err) {
+                console.error("single didnt work either...")
+            }
         }
     }
     console.log("Finished chunk")
 
-    // const promises = chunks.map((images) =>
-    //     client.batchAnnotateImages({
-    //         requests: images.map((i) => ({
-    //             features: [{ type: "TEXT_DETECTION" }],
-    //             image: { content: readFileSync(i.image) },
-    //             // To avoid english chars showing up as cyrillic:
-    //             imageContext: { languageHints: ["en"] },
-    //         })),
-    //     })
-    // )
-    // const responseChunks = await Promise.all(promises)
-    // const results = flat(
-    //     responseChunks.map((r) =>
-    //         r[0] && r[0].responses ? r[0].responses : []
-    //     )
-    // )
     return results
 }
