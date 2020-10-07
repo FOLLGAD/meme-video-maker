@@ -6,10 +6,18 @@ let teststring2 = [
     "why I'm not monky",
 ]
 let teststring3 = ["Me and my boys just chilling!"]
+let teststring4 = [
+    "me and my car and my brother",
+    "and my log just relaxing on the beach but a",
+    "bear came whereas they are rare",
+    "although we survived",
+]
 
-let allStrings = [testString, teststring2, teststring3]
+let allStrings = [testString, teststring2, teststring3, teststring4]
 
 let pausers = [
+    "and",
+    "why",
     "or",
     "but",
     "so",
@@ -39,6 +47,8 @@ let pausers = [
 ]
 
 let pausers2 = [
+    "and",
+    "why",
     "or",
     "but",
     "so",
@@ -77,9 +87,6 @@ function addDashes(line: string) {
     let lineRes = ""
     line.split(" ").forEach((word, i) => {
         if (pausers2.includes(word) && i >= 2) lineRes += "-" + word
-        // else if (word == "and" && i >= 2)
-        //     lineRes +=
-        //         ' <phoneme alphabet="ipa" ph="ænd">thisisnotawort</phoneme>'
         else lineRes += " " + word
     })
     return lineRes.substring(1)
