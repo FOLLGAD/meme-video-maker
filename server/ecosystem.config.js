@@ -17,11 +17,9 @@ module.exports = {
             repo: "git@github.com:FOLLGAD/carp.git",
             path: "/home/ubuntu/carp/server",
             "pre-deploy-local": "",
-            "post-deploy": [
-                "npm i",
-                "npm run build",
-                "pm2 startOrRestart ecosystem.config.js --env production",
-            ],
+            "post-deploy": `npm i &&
+                            npm run build &&
+                            pm2 startOrRestart ecosystem.config.js --env production`,
             "pre-setup": "",
         },
     },
