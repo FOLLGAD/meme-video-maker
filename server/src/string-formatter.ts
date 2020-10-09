@@ -1,45 +1,13 @@
 let pausers = [
-    "and",
-    "why",
-    "or",
-    "but",
-    "so",
-    "after",
-    "before",
     "even if",
-    "if",
     "just as",
-    "provided",
-    "since",
-    "that",
-    "until",
-    "whenever",
-    "whereas",
-    "wherever",
-    "although",
     "as if",
-    "because",
     "even though",
     "if only",
     "if then",
-    "lest",
-    "when",
-    "provided",
     "rather than",
     "so that",
-]
-
-let pausers2 = [
-    "and",
-    "why",
-    "or",
-    "but",
-    "so",
-    "after",
-    "before",
-    "even",
-    "if",
-    "just",
+    "because",
     "provided",
     "since",
     "that",
@@ -48,29 +16,27 @@ let pausers2 = [
     "whereas",
     "wherever",
     "although",
-    "as",
-    "because",
-    "even though",
-    "only",
-    "then",
+    "before",
     "lest",
     "when",
-    "provided",
-    "than",
-    "rather",
+    "and",
+    "why",
+    "or",
+    "but",
+    "so",
+    "after",
+    "if",
 ]
+
+// /\b\s?(even if|just as|...|after|if)\b/gi
+let regex = new RegExp(`\\b\\s?(${pausers.join("|")})\\b`, "gi")
+
+// line is a string
+function addDashesOrSpaces(line: string) {
+    return line.replace(regex, "-$1")
+}
 
 // input is array of strings
 export function stringFormatter(input: string[]) {
     return input.map((line) => addDashesOrSpaces(line))
-}
-
-// line is a string
-function addDashesOrSpaces(line: string) {
-    let lineRes = ""
-    line.split(" ").forEach((word, i) => {
-        if (pausers2.includes(word) && i >= 2) lineRes += "-" + word
-        else lineRes += " " + word
-    })
-    return lineRes.substring(1)
 }
