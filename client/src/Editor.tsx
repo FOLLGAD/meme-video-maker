@@ -4,47 +4,129 @@ import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
 import { preSanitize } from "./sanitize"
 
-function mapBlock(block) {
-    const vert = block.boundingBox.vertices
-    const { x, y } = vert[0]
-    const width = vert[2].x - vert[0].x
-    const height = vert[2].y - vert[0].y
+interface Rect {
+    x: number
+    y: number
+    width: number
+    height: number
+}
 
-    // Gather the text from this block
-    const text = block.paragraphs
-        .map((p) => {
-            let parag = p.words
-                .map((w) => {
-                    return w.symbols.map(({ text }) => text).join("")
-                })
-                .join(" ")
-            // remove >>12321332 (OP), >>1232313 (You)
-            parag = parag.replace(/>>\d+\s*(\(.+\))?/g, "").trim()
-            // replace l'll with I'll (google vision error)
-            parag = parag.replace(/l'll|l've|\Wl\W/g, (sub) =>
-                sub.replace("l", "I")
-            )
-            return parag
-        })
-        .join("\n")
-        .split("\n")
-        .map((d) => d.trim())
-        .join("\n")
+interface Vertex {
+    x: number
+    y: number
+}
 
-    const sanitizedText = preSanitize(text)
+interface BoundingPoly {
+    vertices: [Vertex, Vertex, Vertex, Vertex]
+}
+
+const getOuterBounds = ({ vertices }: BoundingPoly): Rect => {
+    let xs = vertices.map(({ x }) => x)
+    let ys = vertices.map(({ y }) => y)
+    let xmin = Math.min(...xs)
+    let ymin = Math.min(...ys)
+    let xmax = Math.max(...xs)
+    let ymax = Math.max(...ys)
 
     return {
-        text: sanitizedText,
-        rect: {
-            x: x - padding,
-            y: y - padding,
-            width: width + padding * 2,
-            height: height + padding * 2,
-        },
+        x: xmin,
+        y: ymin,
+        width: xmax - xmin,
+        height: ymax - ymin,
     }
 }
 
+const expandOuterBounds = (rects: Rect[]): Rect => {
+    let minx = Math.min(...rects.map(({ x }) => x))
+    let miny = Math.min(...rects.map(({ y }) => y))
+    let xws = rects.map(({ x, width }) => x + width)
+    let yhs = rects.map(({ y, height }) => y + height)
+    return {
+        x: minx,
+        y: miny,
+        width: Math.max(...xws) - minx,
+        height: Math.max(...yhs) - miny,
+    }
+}
+
+interface Word {
+    rect: Rect
+    text: string
+    linebreak: string | false
+}
+
+// TODO: Add padding to rects
 const padding = 3
+
+function mapBlock(block) {
+    const parags: any[] = block.paragraphs
+
+    // Gather the text from this block
+    const lines = parags.flatMap((p) => {
+        let words: Word[] = p.words.map((w) => {
+            // Join the words together
+            let word = w.symbols.map(({ text }) => text).join("")
+            let lastSym = w.symbols[w.symbols.length - 1]
+            let linebreak: string | false =
+                lastSym &&
+                lastSym.property &&
+                lastSym.property.detectedBreak.type
+            if (linebreak) console.log(linebreak)
+
+            let boundingBoxes = w.symbols.map(({ boundingBox }) =>
+                getOuterBounds(boundingBox)
+            )
+            let outerBoundingBox = expandOuterBounds(boundingBoxes)
+
+            let stoppers = [",", ".", "!", "?", ":", ";", "-"]
+            return {
+                rect: outerBoundingBox,
+                text: word,
+                linebreak:
+                    lastSym && stoppers.includes(lastSym.text)
+                        ? "PUNCTUATION"
+                        : linebreak,
+            }
+        })
+        let lines: { rect: Rect; text: string }[] = []
+        let line: Word[] = []
+        const pushLine = (line: Word[]) =>
+            lines.push({
+                rect: expandOuterBounds(line.map((l) => l.rect)),
+                text: line.map((t) => t.text).join(" "),
+            })
+        words.forEach((word) => {
+            line.push(word)
+            if (
+                word.linebreak &&
+                ["EOL_SURE_SPACE", "LINE_BREAK", "PUNCTUATION"].includes(
+                    word.linebreak
+                )
+            ) {
+                console.log("SURE SPACE")
+                pushLine(line)
+                line = []
+            }
+        })
+        if (line.length) pushLine(line)
+
+        // Mutate lines
+        lines.forEach((line) => {
+            // remove >>12321332 (OP), >>1232313 (You)
+            line.text = line.text
+                .replace(/>>\d+\s*(\(.+\))?/g, "")
+                .trim()
+                // replace l'll with I'll (google vision error)
+                .replace(/l'll|l've|\bl\b/g, (sub) => sub.replace("l", "I"))
+
+            line.text = preSanitize(line.text)
+        })
+
+        return lines
+    })
+
+    return lines
+}
 
 function settingsReducer(state, action) {
     switch (action.type) {
@@ -88,7 +170,7 @@ export default function Edit({ res, images, onFinish }) {
             const blocks = obj.fullTextAnnotation
                 ? obj.fullTextAnnotation.pages[0].blocks
                 : []
-            return blocks.map(mapBlock)
+            return blocks.flatMap(mapBlock)
         })
         return draw
     }, [res])
