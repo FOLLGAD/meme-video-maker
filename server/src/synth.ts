@@ -4,6 +4,7 @@ import * as fs from "fs"
 import * as latinize from "latinize"
 import fetch from "node-fetch"
 import { file } from "tmp-promise"
+import { stringFormatter } from "./string-formatter"
 
 function cleanText(text: string): string {
     return text.replace(/\*/g, " ")
@@ -134,7 +135,9 @@ export async function synthDaniel(
 ): Promise<{ path: string; segments: string[] }> {
     let f = await file({ postfix: ".mp3" })
 
-    const xmlEscaped = strings.map((s) => encodeXML(s))
+    const xmlEscapedAndDashed = stringFormatter(strings).map((s) =>
+        encodeXML(s)
+    )
 
     let data
 
@@ -144,7 +147,7 @@ export async function synthDaniel(
             data = await fetch("http://tts.redditvideomaker.com/synthesize", {
                 method: "POST",
                 body: JSON.stringify({
-                    string: stringsToSSML(xmlEscaped),
+                    string: stringsToSSML(xmlEscapedAndDashed),
                 }),
                 headers: {
                     "Content-Type": "application/json",
