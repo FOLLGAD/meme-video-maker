@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import { standardPause } from "./constants"
+import { shortestPause, standardPause } from "./constants"
 import Pipeline from "./Pipeline"
 
 // Gets the mouse click position within the canvas
@@ -146,19 +146,24 @@ export default function FileImage({
         setMouseDownAt([mouseX, mouseY])
     }
 
-    const addStage = (stage) =>
-        stage.type === "reveal"
-            ? setPipeline([
-                  ...pipeline,
-                  { ...stage, id: counter++ },
-                  { type: "pause", id: counter++, secs: standardPause },
-                  { type: "div" },
-              ])
-            : setPipeline([
-                  ...pipeline,
-                  { ...stage, id: counter++ },
-                  { type: "div" },
-              ])
+    const addStage = (stage) => {
+        const newStage = { ...stage, id: counter++ }
+        if (stage.type === "reveal")
+            return setPipeline([
+                ...pipeline,
+                newStage,
+                { type: "pause", id: counter++, secs: standardPause },
+                { type: "div" },
+            ])
+        else if (stage.type === "read")
+            return setPipeline([
+                ...pipeline,
+                newStage,
+                { type: "pause", id: counter++, secs: shortestPause },
+                { type: "div" },
+            ])
+        else return setPipeline([...pipeline, newStage, { type: "div" }])
+    }
 
     const addStages = (stages: any[]) =>
         setPipeline([
