@@ -115,10 +115,10 @@ const generateName = () => {
             now.getUTCHours().toString().padStart(2, "0") +
             now.getUTCMinutes().toString().padStart(2, "0")
     )
-    // CurrentDate = YYYYMMDDHHmm
+    // CurrentDate =    YYMMDDHHmm
     const nextCentury = 9911312359
     return (
-        "4chan-" +
+        "carp-" +
         (nextCentury - currentDate).toString(36) + // Get the time until next century, in base 36
         "-" +
         uuidv4().slice(0, 8) +
