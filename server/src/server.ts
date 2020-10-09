@@ -296,6 +296,7 @@ router
         const data: ListObjectsOutput = await new Promise((res, rej) => {
             s3.listObjects(
                 {
+                    Prefix: "carp",
                     Bucket,
                     MaxKeys: 10,
                 },
@@ -312,7 +313,7 @@ router
     .get("/files", async (ctx) => {
         const { Contents }: ListObjectsOutput = await new Promise(
             (res, rej) => {
-                s3.listObjects(
+                s3.listObjectsV2(
                     {
                         Bucket: FilesBucket,
                         MaxKeys: 100,

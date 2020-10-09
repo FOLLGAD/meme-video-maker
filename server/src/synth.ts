@@ -103,6 +103,11 @@ export function synthSpeech({
 //     })
 // }
 
+const insertBreaks = (string: string) =>
+    string
+        .replace(/(\.)\B/gi, "$1$1") // Dot turn into 2 dots, because daniel reads that as a full stop
+        .replace(/\n/gi, "..$1") // newline turns into ..\n
+
 // https://stackoverflow.com/a/7918944
 function encodeXML(string) {
     return string
@@ -135,9 +140,9 @@ export async function synthDaniel(
 ): Promise<{ path: string; segments: string[] }> {
     let f = await file({ postfix: ".mp3" })
 
-    const xmlEscapedAndDashed = stringFormatter(strings).map((s) =>
-        encodeXML(s)
-    )
+    const xmlEscapedAndDashed = stringFormatter(
+        strings.map(insertBreaks)
+    ).map((s) => encodeXML(s))
 
     let data
 
@@ -152,6 +157,7 @@ export async function synthDaniel(
                 headers: {
                     "Content-Type": "application/json",
                 },
+                timeout: 10000, // 10 second timeout
             }).then((r) => r.json())
 
             break

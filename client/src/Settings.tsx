@@ -87,8 +87,9 @@ export default function ({ settings, pipeline, dispatchSettings, onSubmit }) {
         { width: 1080, height: 1920 },
     ]
 
-    const [useRange, setUseRange] = useState(false)
-    const [range, setRange] = useState(pipeline.length || 0)
+    const setRange = (n) => dispatchSettings({ type: "range", data: n })
+    const setUseRange = (bool) =>
+        dispatchSettings({ type: "useRange", data: bool })
 
     return (
         <div style={{ display: "flex" }} className="container">
@@ -189,22 +190,26 @@ export default function ({ settings, pipeline, dispatchSettings, onSubmit }) {
                     </label>
                 </div>
                 <div>
-                    <label>
+                    <label title="Render only the images up to the given number. Use this for rendering videos of different lengths">
                         <input
                             type="checkbox"
-                            checked={useRange}
+                            checked={settings.useRange}
                             onChange={(e) => setUseRange(e.target.checked)}
                         />
-                        Select range
+                        Use range?
                     </label>
-                    <label>
-                        <input
-                            type="number"
-                            value={range}
-                            placeholder="Render up until..."
-                            onChange={(e) => setRange(e.target.valueAsNumber)}
-                        />
-                    </label>
+                    {settings.useRange && (
+                        <label>
+                            <input
+                                type="number"
+                                value={settings.range}
+                                placeholder="Render up until..."
+                                onChange={(e) =>
+                                    setRange(e.target.valueAsNumber)
+                                }
+                            />
+                        </label>
+                    )}
                 </div>
 
                 <div style={{ padding: "10px 0" }}>

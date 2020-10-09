@@ -240,16 +240,19 @@ export default function FileImage({
                     .filter(([_, i]) => !indexIsEnabled(i))
 
                 rs.forEach(([block, i]) => {
-                    arr.push({
-                        type: "read",
-                        _index: i,
-                        text: block.text.toLowerCase(),
-                        rect: [block.rect],
-                        blockuntil: false,
-                        reveal: false,
-                        added: [],
-                    })
-                    arr.push({ type: "div" })
+                    arr.push(
+                        {
+                            type: "read",
+                            _index: i,
+                            text: block.text.toLowerCase(),
+                            rect: [block.rect],
+                            blockuntil: false,
+                            reveal: false,
+                            added: [],
+                        },
+                        { type: "pause", secs: 0.5 },
+                        { type: "div" }
+                    )
                 })
             } else {
                 arr.push({ type: "pause", secs: 0.0 })

@@ -67,8 +67,13 @@ function settingsReducer(state, action) {
                 outWidth,
                 outHeight,
             }
+        case "range":
+            return { ...state, range: action.data }
+        case "useRange":
+            return { ...state, useRange: action.data }
         default:
             console.error("undefined type", action.type)
+            return state
     }
 }
 
@@ -117,7 +122,13 @@ export default function Edit({ res, images, onFinish }) {
             pipeline: p.pipeline.filter((a) => a.type !== "div"),
         }))
         try {
-            await onFinish(realPipeline, images, settings)
+            const rangedPipeline = settings.useRange
+                ? realPipeline.slice(0, settings.range)
+                : realPipeline
+            const rangedImages = settings.useRange
+                ? images.slice(0, settings.range)
+                : images
+            await onFinish(rangedPipeline, rangedImages, settings)
             setStage(2)
         } catch (error) {
             console.error("error")
@@ -138,6 +149,8 @@ export default function Edit({ res, images, onFinish }) {
         voice: "",
         outWidth: 1920,
         outHeight: 1080,
+        range: pipelines.length,
+        useRange: false,
     })
 
     const btns = (
