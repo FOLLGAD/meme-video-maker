@@ -62,6 +62,7 @@ const queue: (() => Promise<void>)[] = []
 let currentlyRunning = false
 
 async function addToQueue(fn: () => Promise<void>) {
+    console.log("Added to queue")
     queue.push(fn)
     if (!currentlyRunning) {
         currentlyRunning = true
@@ -435,6 +436,12 @@ app.use(async (ctx, next) => {
         ctx.body = { error: err.message }
         ctx.app.emit("error", err, ctx)
     }
+})
+
+app.use((ctx, next) => {
+    // Logging
+    console.log(`${ctx.method} ${ctx.url} - ${new Date().toISOString()}`)
+    return next()
 })
 
 app.use(router.routes()).use(router.allowedMethods())
