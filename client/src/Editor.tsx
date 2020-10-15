@@ -58,7 +58,17 @@ interface Word {
 // TODO: Add padding to rects
 const padding = 3
 
-function mapBlock(block) {
+export interface Line {
+    rect: Rect
+    text: string
+}
+
+export interface LineBlock {
+    blocks: Line[]
+    rect: Rect
+}
+
+const mapBlock = (block): LineBlock => {
     const parags: any[] = block.paragraphs
 
     // Gather the text from this block
@@ -103,7 +113,6 @@ function mapBlock(block) {
                     word.linebreak
                 )
             ) {
-                console.log("SURE SPACE")
                 pushLine(line)
                 line = []
             }
@@ -125,7 +134,10 @@ function mapBlock(block) {
         return lines
     })
 
-    return lines
+    return {
+        blocks: lines,
+        rect: getOuterBounds(block.boundingBox),
+    }
 }
 
 function settingsReducer(state, action) {
@@ -166,11 +178,13 @@ export default function Edit({ res, images, onFinish }) {
     const img = images[index]
 
     const drawBlocks = useMemo(() => {
-        const draw = res.map((obj) => {
-            const blocks = obj.fullTextAnnotation
-                ? obj.fullTextAnnotation.pages[0].blocks
-                : []
-            return blocks.flatMap(mapBlock)
+        const draw: LineBlock[][] = res.map((obj): LineBlock[] => {
+            if (obj.fullTextAnnotation) {
+                let blocks = obj.fullTextAnnotation.pages[0].blocks
+                return blocks.map(mapBlock)
+            } else {
+                return []
+            }
         })
         return draw
     }, [res])

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import { shortestPause, standardPause } from "./constants"
+import { LineBlock } from "./Editor"
 import Pipeline from "./Pipeline"
 
 // Gets the mouse click position within the canvas
@@ -26,14 +27,14 @@ const isInRect = (rect, x, y) =>
 
 export default function FileImage({
     src,
-    blocks,
+    blocks: lineBlocks,
     settings,
     setSettings,
     pipeline,
     setPipeline,
 }: {
     src: File
-    blocks: any[]
+    blocks: LineBlock[]
     settings: any
     setSettings: any
     pipeline: any[]
@@ -123,7 +124,7 @@ export default function FileImage({
         })
 
         // Draw reading blocks
-        blocks.forEach(({ rect: { x, y, width, height } }, i) => {
+        lineBlocks.forEach(({ rect: { x, y, width, height } }, i) => {
             ctx.strokeStyle = indexIsEnabled(i)
                 ? "lightgreen"
                 : indexIsAdded(i)
@@ -234,25 +235,27 @@ export default function FileImage({
             arr.push({ type: "div" })
 
             if (shiftDown) {
-                const rs = blocks
-                    .map((a, i) => [a, i])
+                const rs = lineBlocks
+                    .map((a, i): [LineBlock, number] => [a, i])
                     .filter(([r, _]) => rectContainsRect(rect, r.rect))
                     .filter(([_, i]) => !indexIsEnabled(i))
 
-                rs.forEach(([block, i]) => {
-                    arr.push(
-                        {
-                            type: "read",
-                            _index: i,
-                            text: block.text.toLowerCase(),
-                            rect: [block.rect],
-                            blockuntil: false,
-                            reveal: false,
-                            added: [],
-                        },
-                        { type: "pause", secs: 0.5 },
-                        { type: "div" }
-                    )
+                rs.forEach(([lineBlock, i]) => {
+                    lineBlock.blocks.forEach((block) => {
+                        arr.push(
+                            {
+                                type: "read",
+                                _index: i,
+                                text: block.text.toLowerCase(),
+                                rect: [block.rect],
+                                blockuntil: false,
+                                reveal: false,
+                                added: [],
+                            },
+                            { type: "pause", secs: 0.5 },
+                            { type: "div" }
+                        )
+                    })
                 })
             } else {
                 arr.push({ type: "pause", secs: 0.0 })
@@ -262,43 +265,26 @@ export default function FileImage({
             return addStages(arr)
         }
 
-        const found = blocks.findIndex(({ rect }) =>
+        const found = lineBlocks.findIndex(({ rect }) =>
             isInRect(rect, mouseX, mouseY)
         )
 
         if (found !== -1) {
             if (indexIsEnabled(found)) {
                 removeStage(pipeline.find((s) => s._index === found).id)
-            } else if (shiftDown) {
-                // If shift is down, look for the last TTS and append the clicked text to it.
-                const revInd = pipeline
-                    .slice()
-                    .reverse()
-                    .findIndex((s) => s.type === "read")
-
-                const ind = pipeline.length - 1 - revInd
-                if (revInd !== -1 && !pipeline[ind].added.includes(found)) {
-                    const newText =
-                        pipeline[ind].text +
-                        " " +
-                        blocks[found].text.toLowerCase()
-                    updateStage(ind, {
-                        ...pipeline[ind],
-                        text: newText,
-                        rect: [...pipeline[ind].rect, blocks[found].rect],
-                        added: [...pipeline[ind].added, found],
-                    })
-                }
             } else {
-                addStage({
-                    type: "read",
-                    _index: found,
-                    text: blocks[found].text.toLowerCase(),
-                    rect: [blocks[found].rect],
-                    blockuntil: false,
-                    reveal: true,
-                    added: [],
+                const stages = lineBlocks[found].blocks.map((block) => {
+                    return {
+                        type: "read",
+                        _index: found,
+                        text: block.text.toLowerCase(),
+                        rect: [block.rect],
+                        blockuntil: false,
+                        reveal: true,
+                        added: [],
+                    }
                 })
+                addStages([...stages, { type: "div" }])
             }
         }
 
@@ -315,7 +301,7 @@ export default function FileImage({
             drawImage(src).then(() => {
                 drawOverlay()
             })
-    }, [blocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
+    }, [lineBlocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
 
     const divRef = useRef<HTMLDivElement>(null)
 
