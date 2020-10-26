@@ -1,5 +1,6 @@
 // This file is for the tts calls
 
+import { ffprobe } from "fluent-ffmpeg"
 import * as fs from "fs"
 import * as latinize from "latinize"
 import fetch from "node-fetch"

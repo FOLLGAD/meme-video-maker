@@ -1,8 +1,8 @@
 import React, { useMemo, useReducer, useState } from "react"
 import EditImage from "./EditImage"
+import { preSanitize } from "./sanitize"
 import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
-import { preSanitize } from "./sanitize"
 
 interface Rect {
     x: number
@@ -59,8 +59,9 @@ interface Word {
 const padding = 3
 
 export interface Line {
-    rect: Rect
+    rect: Rect[]
     text: string
+    line: number
 }
 
 export interface LineBlock {
@@ -98,12 +99,14 @@ const mapBlock = (block): LineBlock => {
                         : linebreak,
             }
         })
-        let lines: { rect: Rect; text: string }[] = []
+        let lines: Line[] = []
         let line: Word[] = []
+        let currentLine = 0
         const pushLine = (line: Word[]) =>
             lines.push({
-                rect: expandOuterBounds(line.map((l) => l.rect)),
+                rect: [expandOuterBounds(line.map((l) => l.rect))],
                 text: line.map((t) => t.text).join(" "),
+                line: currentLine,
             })
         words.forEach((word) => {
             line.push(word)
@@ -114,6 +117,7 @@ const mapBlock = (block): LineBlock => {
                 )
             ) {
                 pushLine(line)
+                if (word.linebreak !== "PUNCTUATION") currentLine++
                 line = []
             }
         })
@@ -169,6 +173,27 @@ function settingsReducer(state, action) {
             console.error("undefined type", action.type)
             return state
     }
+}
+
+interface Rec {
+    x: number
+    y: number
+    height: number
+    width: number
+}
+
+interface Read {
+    rect: Rec[]
+    text: string
+}
+
+export interface ReadStage {
+    type: "read"
+    joinNext?: boolean
+    reads: Read[]
+    rect: Rec[]
+    reveal: boolean
+    blockuntil: boolean
 }
 
 export default function Edit({ res, images, onFinish }) {
@@ -288,7 +313,6 @@ export default function Edit({ res, images, onFinish }) {
                     <Settings
                         settings={settings}
                         onSubmit={onSubmit}
-                        pipeline={pipelines}
                         dispatchSettings={dispatchSettings}
                     />
                     <button onClick={() => setStage(0)}>Back</button>

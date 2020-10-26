@@ -1,10 +1,27 @@
 // TODO: Could also use gm for image manipulation: https://github.com/aheckmann/gm
 import * as Canvas from "canvas"
 import * as ffmpeg from "fluent-ffmpeg"
-import { writeFileSync, createWriteStream } from "fs"
+import { createWriteStream, writeFileSync } from "fs"
 import { join } from "path"
-import { file, fileSync, FileResult, setGracefulCleanup } from "tmp-promise"
+import { file, FileResult, fileSync, setGracefulCleanup } from "tmp-promise"
 import { synthSpeech } from "./synth"
+
+// For forking this process
+process.on(
+    "message",
+    async ([pipes, images, videosettings]: [
+        Pipeline[],
+        string[],
+        VideoSettings
+    ]) => {
+        try {
+            const vidPath = await makeVids(pipes, images, videosettings)
+            process.send!({ isError: false, data: vidPath })
+        } catch (error) {
+            process.send!({ isError: true, data: error })
+        }
+    }
+)
 
 setGracefulCleanup()
 
@@ -17,11 +34,17 @@ export interface Rec {
     width: number
 }
 
+interface Read {
+    rect: Rec[]
+    line?: number
+    text: string
+}
+
 export interface ReadStage {
     type: "read"
     joinNext?: boolean
+    reads: Read[]
     rect: Rec[]
-    text: string
     reveal: boolean
     blockuntil: boolean
 }
@@ -49,6 +72,17 @@ export type PipelineImg = {
     pipeline: Stage[]
     settings?: ImageSettings
     image: string
+}
+
+const timestampToSeconds = (timestamp: string) => {
+    let [h, m, s, ms] = timestamp.split(/[:.]/)
+
+    return (
+        parseInt(h) * 60 * 60 +
+        parseInt(m) * 60 +
+        parseInt(s) +
+        parseFloat("0." + ms)
+    )
 }
 
 // Ffprobe
@@ -130,8 +164,8 @@ async function convToDims(
             .autopad()
             .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
-            .audioFrequency(24000)
-            .audioChannels(2)
+            .audioFrequency(22050)
+            .audioChannels(1)
             .fps(25)
             .videoCodec("libx264")
             .save(f.path)
@@ -244,33 +278,53 @@ async function makeImageThing(
     blockingCtx.fillStyle = blockColor
     blockingCtx.fillRect(0, 0, width, height)
 
+    // Init: fill the canvas with the blocked one
+    imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+
     const vids: string[] = []
+
+    const processStage = (stage: Stage): void => {
+        if (stage.type === "reveal") {
+            blockingCtx.clearRect(
+                stage.rect.x,
+                stage.rect.y,
+                stage.rect.width,
+                stage.rect.height
+            )
+        } else if (stage.type === "read") {
+            // if blocking, should show the screen up until this point but block the areas themselves
+        }
+    }
+
+    const getSnapshot = async (): Promise<FileResult> => {
+        const pngf = await file({ postfix: ".png" })
+
+        const st = createWriteStream(pngf.path)
+        await new Promise((res, rej) =>
+            imageCanvas
+                .createPNGStream()
+                .pipe(st)
+                .on("finish", res)
+                .on("error", rej)
+        )
+
+        return pngf
+    }
 
     for (let i = 0; i < pipeline.length; i++) {
         console.time("render_stage")
         const stage = pipeline[i]
         console.log("stage:", stage.type)
-        if (stage.type === "read") {
-            if (stage.reveal) {
-                // Clear text
-                stage.rect.forEach((rect) =>
-                    blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
-                )
-            } else {
-                // Reveal text-blocks still?
-                // stage.rect.forEach((rect) =>
-                //     blockingCtx.clearRect(
-                //         rect.x,
-                //         rect.y,
-                //         rect.width,
-                //         rect.height
-                //     )
-                // )
-            }
-        }
+        // if (stage.type === "read") {
+        //     if (stage.reveal) {
+        //         // Clear text
+        //         stage.rect.forEach((rect) =>
+        //             blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
+        //         )
+        //     }
+        // }
 
-        imageCanvCtx.clearRect(0, 0, width, height)
-        // Draw source
+        // Replace the canvas with the image
         imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
         // Do not draw if on last stage and stage isn't read
         if (i < pipeline.length - 1 || stage.type !== "read") {
@@ -282,11 +336,11 @@ async function makeImageThing(
         // block it!
         imageCanvCtx.fillStyle = blockColor
         pipeline
-            .slice(i + 1)
-            .filter((s): s is ReadStage => s.type === "read" && s.blockuntil)
+            .slice(i + 1) // all stages after the current one...
+            .filter((s): s is ReadStage => s.type === "read" && s.blockuntil) // that are read and blockuntil...
             .forEach(({ rect }) => {
-                rect.forEach((r) =>
-                    imageCanvCtx.fillRect(r.x, r.y, r.width, r.height)
+                rect.forEach(
+                    (r) => imageCanvCtx.fillRect(r.x, r.y, r.width, r.height) // ...fill up all areas covered by the read
                 )
             })
 
@@ -296,64 +350,111 @@ async function makeImageThing(
                 ffmpegDone = false
             try {
                 console.time("synth_speech")
-                const { path: speechFile } = await synthSpeech({
-                    text: [stage.text],
+                const { path: speechFile, segments } = await synthSpeech({
+                    text: stage.reads.map((r) => r.text),
                     voice: videoSettings.voice || "daniel",
                 })
                 console.timeEnd("synth_speech")
                 speechDone = true
 
-                const f: FileResult = await new Promise(async (res, rej) => {
-                    const f = await file({ postfix: ".mp4" })
-                    const speechInfo: any = await probe(speechFile)
-
-                    const pngf = await file({ postfix: ".png" })
-
-                    const st = createWriteStream(pngf.path)
-                    await new Promise((res, rej) =>
-                        imageCanvas
-                            .createPNGStream()
-                            .pipe(st)
-                            .on("finish", res)
-                            .on("error", rej)
+                let realSegments: number[] = segments
+                    .map(timestampToSeconds)
+                    .map((t, i, a) =>
+                        i === a.length - 1 ? t + 0.2 : Math.max(0, t - 0.2)
                     )
-                    pngDone = true
 
-                    ffmpeg()
-                        .input(pngf.path)
-                        .inputOptions(["-loop 1"])
-                        .input(speechFile)
-                        .size(
-                            getResString(
-                                videoSettings.outWidth,
-                                videoSettings.outHeight
-                            )
+                // for every segment, do the thing
+
+                const pngs: FileResult[] = []
+                for (let i = 0; i < stage.reads.length; i++) {
+                    const read = stage.reads[i]
+                    // Clear this read from the blocker
+                    read.rect.forEach((rect) => {
+                        blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
+                    })
+
+                    for (let q = i + 1; q < stage.reads.length; q++) {
+                        if (
+                            !stage.reads[q].line ||
+                            stage.reads[q].line !== read.line
                         )
-                        .autopad()
-                        .videoCodec("libx264")
-                        .audioCodec("aac")
-                        .audioFrequency(24000)
-                        .audioChannels(2)
-                        .duration(
-                            stage.joinNext
-                                ? speechInfo.format.duration - 0.5
-                                : speechInfo.format.duration
+                            break
+
+                        stage.reads[q].rect.forEach(
+                            (r) =>
+                                blockingCtx.fillRect(
+                                    r.x,
+                                    r.y,
+                                    r.width,
+                                    r.height
+                                ) // ...fill up all areas covered by the read
                         )
-                        .outputOptions(["-pix_fmt yuv420p", "-r 25"])
-                        .save(f.path)
-                        .on("error", (err) =>
-                            rej(
-                                new Error(
-                                    err || "Something with ffmpeg went wrong"
+                    }
+
+                    // draw the image on the canvas
+                    imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+                    // draw the blocker to the canvas
+                    imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+                    const pngf = await getSnapshot()
+
+                    pngs.push(pngf)
+                }
+
+                pngDone = true
+
+                const videoClips: FileResult[] = []
+
+                for (let i = 0; i < pngs.length; i++) {
+                    const png = pngs[i]
+                    const f = await file({ postfix: ".mp4" })
+
+                    await new Promise((res, rej) => {
+                        ffmpeg(png.path)
+                            .inputOptions(["-loop 1"])
+                            .input(speechFile)
+                            .size(
+                                getResString(
+                                    videoSettings.outWidth,
+                                    videoSettings.outHeight
                                 )
                             )
-                        )
-                        .on("end", () => res(f))
+                            .autopad()
+                            .videoCodec("libx264")
+                            .audioCodec("aac")
+                            .audioFrequency(22050)
+                            .audioChannels(1)
 
-                    ffmpegDone = true
-                })
+                            // Pick the correct part of the video
+                            .seek(realSegments[i - 1] || 0)
+                            .duration(
+                                realSegments[i] - (realSegments[i - 1] || 0)
+                            )
 
-                vids.push(f.path)
+                            .outputOptions(["-pix_fmt yuv420p", "-r 25"])
+                            .save(f.path)
+                            .on("error", (err) =>
+                                rej(
+                                    new Error(
+                                        err ||
+                                            "Something with ffmpeg went wrong"
+                                    )
+                                )
+                            )
+                            .on("end", () => res(f))
+                    })
+
+                    videoClips.push(f)
+                }
+                ffmpegDone = true
+
+                const out = await file({ postfix: ".mp4" })
+
+                await simpleConcat(
+                    videoClips.map((v) => v.path),
+                    out.path
+                )
+
+                vids.push(out.path)
             } catch (err) {
                 console.error("MakeImageThing:", err)
                 console.error("s,p,f", speechDone, pngDone, ffmpegDone)
@@ -380,7 +481,7 @@ async function makeImageThing(
                         .input(
                             // Insert an empty audio stream, otherwise the
                             // pauses fuck up the rest of the vid
-                            "anullsrc=cl=stereo:r=24000"
+                            "anullsrc=cl=mono:r=22050"
                         )
                         .inputOptions(["-f lavfi"])
                         .size(
@@ -392,8 +493,8 @@ async function makeImageThing(
                         .autopad()
                         .videoCodec("libx264")
                         .audioCodec("aac")
-                        .audioFrequency(24000)
-                        .audioChannels(2)
+                        .audioFrequency(22050)
+                        .audioChannels(1)
                         .duration(pauseTime)
                         .outputOptions(["-pix_fmt yuv420p", "-r 25"])
                         .save(f.path)
@@ -429,12 +530,12 @@ async function makeImageThing(
                     .input(
                         // Insert an empty audio stream, otherwise the
                         // pauses fuck up the rest of the vid
-                        "anullsrc=cl=stereo:r=24000"
+                        "anullsrc=cl=mono:r=22050"
                     )
                     .inputOptions(["-f lavfi"])
                     .audioCodec("aac")
-                    .audioFrequency(24000)
-                    .audioChannels(2)
+                    .audioFrequency(22050)
+                    .audioChannels(1)
                     .size(
                         getResString(
                             videoSettings.outWidth,
@@ -472,14 +573,25 @@ async function makeImageThing(
 }
 
 function getConcat(videoPaths) {
-    const txt = fileSync()
+    const txt = fileSync({ postfix: ".txt" })
     const tempPath = txt.name
 
-    writeFileSync(tempPath, videoPaths.map((d) => `file '${d}'\n`).join(""))
+    writeFileSync(
+        tempPath,
+        "ffconcat version 1.0\n" +
+            videoPaths.map((d) => `file '${d}'\n`).join(""),
+        {
+            encoding: "utf-8",
+        }
+    )
+
+    console.log(videoPaths)
 
     const f = ffmpeg()
         .input(tempPath)
-        .inputOptions(["-f concat", "-safe 0", "-r 25"])
+        .inputFps(25)
+        .inputOptions(["-f concat", "-safe 0"])
+        .on("progress", console.log)
     return f
 }
 
@@ -500,16 +612,16 @@ function tsConcat(videoPaths: string[], outPath: string): Promise<void> {
 function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
     return new Promise((res, rej) => {
         getConcat(videoPaths)
-            .inputFPS(25)
-            .videoCodec("copy")
-            .audioCodec("copy")
+            .videoCodec("libx264")
+            .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
-            .audioChannels(2)
+            .audioChannels(1)
             .fps(25)
             .on("end", () => {
                 res()
             })
             .on("error", (err) => {
+                console.log("failed simple concat")
                 console.error(err)
                 rej()
             })
@@ -524,7 +636,7 @@ function reencodedConcat(videoPaths: string[], outPath: string): Promise<void> {
             .videoCodec("libx264")
             .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
-            .audioChannels(2)
+            .audioChannels(1)
             .fps(25)
             .on("end", () => {
                 res()
@@ -556,7 +668,7 @@ function combineVideoAudio(videoPath, audioPath, outPath) {
             .duration(videoInfo.format.duration) // Run for the duration of the video
             .complexFilter(["[0:a:0][1:a:0] amerge=inputs=2 [aout]"])
             .outputOptions(["-map 0:v:0", "-map [aout]"])
-            .audioChannels(2)
+            .audioChannels(1)
             .fps(25)
             .on("end", () => {
                 res()
@@ -575,9 +687,9 @@ export function normalizeVideo(videoPath: string, outPath: string) {
             .videoCodec("libx264")
             .audioCodec("aac")
             .outputOptions(["-pix_fmt yuv420p"])
-            .audioChannels(2)
+            .audioChannels(1)
             .fps(25)
-            .audioFrequency(24000)
+            .audioFrequency(22050)
             .save(outPath)
             .on("end", res)
             .on("error", rej)

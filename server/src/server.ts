@@ -3,6 +3,7 @@ import * as cors from "@koa/cors"
 import * as AWS from "aws-sdk"
 import { ScanOutput } from "aws-sdk/clients/dynamodb"
 import { ListObjectsOutput } from "aws-sdk/clients/s3"
+import { fork } from "child_process"
 // Load env variables
 import { config } from "dotenv"
 import { createReadStream, existsSync, writeFileSync } from "fs"
@@ -11,9 +12,10 @@ import * as Koa from "koa"
 import * as koaMultiBody from "koa-body"
 import * as koaBodyParser from "koa-bodyparser"
 import * as Router from "koa-router"
+import { join } from "path"
 import { file } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
-import { makeVids, normalizeVideo, Pipeline } from "./video"
+import { normalizeVideo, Pipeline } from "./video"
 import { readImages } from "./vision"
 
 config()
@@ -141,29 +143,48 @@ async function makeVid(rawSet, pipeline: Pipeline[], images): Promise<void> {
 
     console.log(logDate(), "Making video...")
 
-    return await makeVids(
-        pipeline,
-        images.map((i) => i.image),
-        settings
-    ).then((vid) => {
-        console.log(logDate(), "Video finished on ", vid)
-        const now = new Date()
+    const process = fork(join(__dirname, "./video"))
 
-        const expires = new Date()
-        expires.setMonth(now.getMonth() + 1)
+    process.send([pipeline, images.map((i) => i.image), settings])
 
-        const name = generateName()
+    return await new Promise((res, rej) => {
+        process.on(
+            "message",
+            async ({ isError, data }: { isError: boolean; data: any }) => {
+                if (isError) return rej(data)
 
-        return new Promise((res, rej) => {
-            s3.upload(
-                {
-                    Bucket,
-                    Body: createReadStream(vid),
-                    Key: name,
-                    Expires: expires, // HTTP-date
-                },
-                (err) => (err ? rej(err) : res())
-            )
+                console.log(logDate(), "Video finished on ", data)
+                const now = new Date()
+
+                const expires = new Date()
+                expires.setMonth(now.getMonth() + 1)
+
+                const name = generateName()
+
+                await new Promise((r1, e1) => {
+                    s3.upload(
+                        {
+                            Bucket,
+                            Body: createReadStream(data),
+                            Key: name,
+                            Expires: expires, // HTTP-date
+                        },
+                        (err) => (err ? e1(err) : r1())
+                    )
+                })
+
+                process.kill()
+
+                res()
+            }
+        )
+
+        process.on("error", (error) => {
+            console.error(error)
+
+            process.kill()
+
+            rej(error)
         })
     })
 }
