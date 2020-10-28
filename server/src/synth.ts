@@ -127,7 +127,7 @@ function insertBookmarks(array: string[]) {
     return a.join(" ")
 }
 
-const stringsToSSML = (strings: string[]) => `
+const wrapStringsInSSML = (strings: string[]) => `
     <speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
         <voice name="ScanSoft Daniel_Full_22kHz">
             ${insertBookmarks(strings)}
@@ -139,13 +139,33 @@ const stringsToSSML = (strings: string[]) => `
 export async function synthDaniel(
     strings: string[]
 ): Promise<{ path: string; segments: string[] }> {
-    let f = await file({ postfix: ".mp3" })
+    let f = await file({ postfix: ".wav" })
 
-    const xmlEscapedAndDashed = stringFormatter(
+    let xmlEscapedAndDashed = stringFormatter(
         strings.map(insertBreaks)
     ).map((s) => encodeXML(s))
 
+    console.log(xmlEscapedAndDashed)
+    // Add breaks before & after double quotes
+    let xmlWithBreaks: string[] = []
+
+    xmlEscapedAndDashed.forEach((string, i) => {
+        let weakBreak = `<break strength="weak" />`
+        xmlWithBreaks.push(
+            string
+                .replace(/\b&quot;(\s|$)/g, weakBreak + "$&")
+                .replace(/(\s)&quot;\b/g, "$&" + weakBreak)
+        )
+        if (string.startsWith("&quot;") && i > 0) {
+            // if first character is quote... push a break onto the ending of the previous reading
+            xmlWithBreaks[i - 1] += weakBreak
+        }
+    })
+    console.log(xmlWithBreaks)
+
     let data
+
+    console.log(wrapStringsInSSML(xmlWithBreaks))
 
     let tries = 0
     while (true) {
@@ -153,7 +173,7 @@ export async function synthDaniel(
             data = await fetch("http://tts.redditvideomaker.com/synthesize", {
                 method: "POST",
                 body: JSON.stringify({
-                    string: stringsToSSML(xmlEscapedAndDashed),
+                    string: wrapStringsInSSML(xmlWithBreaks),
                 }),
                 headers: {
                     "Content-Type": "application/json",

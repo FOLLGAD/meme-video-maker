@@ -1,6 +1,6 @@
 import React, { useMemo } from "react"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
-import { Pipeline, Stage } from "./EditImage"
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd"
+import { Stage } from "./EditImage"
 
 export default function ({
     setPipeline,

@@ -11,7 +11,6 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
     ) => {
         event.preventDefault()
 
-        const fd = new FormData()
         const files = filesInp!.current!.files
         if (!files || files.length === 0) {
             return
@@ -19,19 +18,48 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
         setLoading(true)
         setError(null)
 
-        // Append files to formdata
-        const info: { id: string }[] = []
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            fd.append("files", file, i.toString())
-            info.push({ id: i.toString() })
+        const urls: {
+            fields: { [key: string]: string }
+            url: string
+        }[] = await apiFetch(`/v2/get-signed-urls?amount=${files.length}`, {
+            method: "POST",
+        }).then((p) => p.json())
+
+        // https://blog.rocketinsights.com/uploading-images-to-s3-via-the-browser/
+
+        const images: { file: File; key: string }[] = []
+
+        for (let i = 0; i < urls.length; i++) {
+            let fd = new FormData()
+
+            const { key } = urls[i].fields
+
+            fd.append("Content-Type", files[i].type)
+
+            Object.entries(urls[i].fields).forEach(([k, v]) => {
+                fd.append(k, v)
+            })
+
+            fd.append("file", files[i])
+
+            const res = await fetch(urls[i].url, {
+                body: fd,
+                method: "POST",
+            })
+            if (!res.ok) {
+                console.error(i, "FAILED!")
+            }
+            images.push({ file: files[i], key })
         }
 
-        fd.append("info", JSON.stringify(info))
+        // Append files to formdata
 
-        apiFetch("/vision", {
-            body: fd,
+        apiFetch("/v2/vision", {
+            body: JSON.stringify(images.map((i) => i.key)),
             method: "POST",
+            headers: {
+                "content-type": "application/json",
+            },
         })
             .then(async (d) => {
                 if (!d.ok) {
@@ -39,9 +67,9 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
                 }
                 return await d.json()
             })
-            .then((d) => {
+            .then((res) => {
                 setLoading(false)
-                setData({ res: d, images: files })
+                setData({ res: res, images })
             })
             .catch((d) => {
                 setLoading(false)

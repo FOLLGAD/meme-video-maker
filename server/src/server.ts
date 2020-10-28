@@ -15,13 +15,15 @@ import * as Router from "koa-router"
 import { join } from "path"
 import { file } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
+import { makeIntoS3Url } from "./utils"
 import { normalizeVideo, Pipeline } from "./video"
-import { readImages } from "./vision"
+import { readImages, readRemoteImages } from "./vision"
 
 config()
+AWS.config.region = "eu-central-1"
 
 // AWS S3
-const s3 = new AWS.S3()
+const s3 = new AWS.S3({ region: "eu-central-1" })
 
 // AWS DynamoDB
 const dynamodb = new AWS.DynamoDB({
@@ -30,9 +32,9 @@ const dynamodb = new AWS.DynamoDB({
 })
 
 // S3 Buckets
-const Bucket = "4chan-app"
-const FilesBucket = "4chan-files"
-const MemesBucket = "carp-memes"
+const Bucket = "carp-videos"
+const FilesBucket = "carp-files"
+const UploadsBucket = "carp-uploads"
 // DynamoDB table
 const dbThemeName = "4chan-themes"
 
@@ -120,7 +122,7 @@ const generateName = () => {
     // CurrentDate =    YYMMDDHHmm
     const nextCentury = 9911312359
     return (
-        "carp-" +
+        "test-carp-" +
         (nextCentury - currentDate).toString(36) + // Get the time until next century, in base 36
         "-" +
         uuidv4().slice(0, 8) +
@@ -128,9 +130,16 @@ const generateName = () => {
     )
 }
 
+const expectJson = (c) => {
+    console.log(c.request)
+    if (typeof c.request.body !== "object") {
+        throw new Error("JSON required")
+    }
+}
+
 const logDate = () => new Date().toLocaleString()
 
-async function makeVid(rawSet, pipeline: Pipeline[], images): Promise<void> {
+async function makeVid(rawSet, pipeline: Pipeline[]): Promise<void> {
     const settings = {
         ...rawSet,
         intro: rawSet.intro ? await getFile(rawSet.intro) : undefined,
@@ -145,7 +154,7 @@ async function makeVid(rawSet, pipeline: Pipeline[], images): Promise<void> {
 
     const process = fork(join(__dirname, "./video"))
 
-    process.send([pipeline, images.map((i) => i.image), settings])
+    process.send([pipeline, settings])
 
     return await new Promise((res, rej) => {
         process.on(
@@ -228,6 +237,66 @@ router
     //         ctx.body = { error: "disdn't owrk for some reason" }
     //     }
     // })
+    .post("/v2/get-signed-urls", async (ctx) => {
+        const amount = parseInt(ctx.query.amount)
+        if (amount <= 0 || amount > 500) {
+            ctx.status = 400
+            ctx.body = {
+                success: false,
+            }
+            return
+        }
+
+        // https://blog.rocketinsights.com/uploading-images-to-s3-via-the-browser/
+
+        let datas: AWS.S3.PresignedPost[] = []
+
+        for (let i = 0; i < amount; i++) {
+            const fileName = `carp/${uuidv4()}` // create a unique file name
+            const s3Params: AWS.S3.PresignedPost.Params = {
+                Bucket: UploadsBucket,
+                Fields: {
+                    key: fileName,
+                },
+                Conditions: [
+                    ["content-length-range", 0, 100000000],
+                    ["starts-with", "$Content-Type", "image/"],
+                    // ["eq", "$x-amz-meta-user-id", userId],
+                ],
+                // ContentType: fileType
+            }
+
+            const data = s3.createPresignedPost(s3Params)
+            datas.push(data)
+        }
+
+        ctx.body = datas
+    })
+    .post("/v2/vision", bodyParser, async (ctx) => {
+        const { body } = ctx.request
+
+        const imageUrls = body.map(makeIntoS3Url)
+
+        const data = await readRemoteImages(imageUrls)
+
+        ctx.body = data
+    })
+    .post("/v2/render", bodyParser, async (ctx) => {
+        const { body } = ctx.request
+
+        const {
+            pipeline,
+            settings,
+        }: { pipeline: Pipeline[]; settings: any } = body
+
+        console.log(body)
+
+        addToQueue(() => makeVid(settings, pipeline))
+
+        ctx.body = {
+            success: true,
+        }
+    })
     .post("/vision", koaBody, async (ctx) => {
         // id corresponds to an entry
         const { files, body } = ctx.request
@@ -239,19 +308,19 @@ router
 
         ctx.body = res
     })
-    .post("/make-vid", koaBody, async (ctx) => {
-        const { files, body } = ctx.request
-        const images = parseFiles(JSON.parse(body.info), files)
+    // .post("/make-vid", koaBody, async (ctx) => {
+    //     const { files, body } = ctx.request
+    //     const images = parseFiles(JSON.parse(body.info), files)
 
-        const pipeline: Pipeline[] = JSON.parse(body.pipeline)
-        const rawSet: any = JSON.parse(body.settings)
+    //     const pipeline: Pipeline[] = JSON.parse(body.pipeline)
+    //     const rawSet: any = JSON.parse(body.settings)
 
-        addToQueue(() => makeVid(rawSet, pipeline, images))
+    //     addToQueue(() => makeVid(rawSet, pipeline, images))
 
-        ctx.body = {
-            success: true,
-        }
-    })
+    //     ctx.body = {
+    //         success: true,
+    //     }
+    // })
     .post("/upload-file", koaLargeBody, async (ctx) => {
         const { files } = ctx.request
         if (!files) throw new Error("Please send a file")
@@ -317,7 +386,7 @@ router
         const data: ListObjectsOutput = await new Promise((res, rej) => {
             s3.listObjects(
                 {
-                    Prefix: "carp",
+                    Prefix: "test-carp",
                     Bucket,
                     MaxKeys: 10,
                 },

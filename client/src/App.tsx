@@ -1,18 +1,24 @@
-import React, { useState, useEffect } from "react"
+import React, { useEffect, useState } from "react"
+import apiFetch from "./apiFetch"
+import { Pipeline } from "./EditImage"
+import Editor from "./Editor"
 import Upload from "./Upload"
 import UploadTheme from "./UploadTheme"
-import Editor from "./Editor"
-import apiFetch from "./apiFetch"
 import VideoList from "./VideoList"
 
+export interface FileKey {
+    file: File
+    key: string
+}
+
 function App() {
-    const [images, setImages] = useState<any[] | null>(null)
-    const [res, setRes] = useState(null)
+    const [images, setImages] = useState<FileKey[] | null>(null)
+    const [res, setRes] = useState<any[] | null>(null)
     const [dirty, setDirty] = useState(false)
 
     const loadData = ({ images, res }) => {
         setRes(res)
-        setImages(Array.from(images))
+        setImages(images)
         setDirty(true)
     }
 
@@ -24,31 +30,19 @@ function App() {
         return () => window.removeEventListener("beforeunload", func)
     }, [dirty])
 
-    const finished = (blocks, images, settings) => {
-        const fd = new FormData()
-
-        // Append files to formdata
-        const info: any[] = []
-        let i = 0
-        for (const file of images) {
-            fd.append("files", file, i.toString())
-            info.push({ id: i.toString() })
-            i++
-        }
-
-        fd.append("info", JSON.stringify(info))
-        fd.append("pipeline", JSON.stringify(blocks))
-        fd.append("settings", JSON.stringify(settings))
-
-        return apiFetch("/make-vid", {
-            body: fd,
+    const finished = (pipeline: Pipeline[], settings) => {
+        return apiFetch("/v2/render", {
+            body: JSON.stringify({ pipeline, settings }),
             method: "POST",
+            headers: {
+                "content-type": "application/json",
+            },
         }).then((d) => d.json())
     }
 
     return (
         <div className="app">
-            {images ? (
+            {images && res ? (
                 <Editor res={res} images={images} onFinish={finished} />
             ) : (
                 <div style={{ display: "flex" }}>

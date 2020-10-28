@@ -35,6 +35,7 @@ interface Rec {
 interface Read {
     rect: Rec[]
     text: string
+    line?: number
 }
 
 interface BaseStage {
@@ -77,6 +78,7 @@ export type ImageSettings = {
 export type Pipeline = {
     pipeline: Stage[]
     settings: any
+    image: string
 }
 
 export default function FileImage({
@@ -330,15 +332,17 @@ export default function FileImage({
                 let block = pipeline.find((s) => s._index === clickedBlock)
                 if (block) removeStage(block.id)
             } else if (shiftDown) {
+                // Add blocks
                 let block = lineBlocks[clickedBlock]
 
-                let foundIndex = pipeline
+                let _foundIndexReversed = pipeline
                     .slice() // .reverse() is in-place, so make a copy bruv
                     .reverse()
                     .findIndex((p) => p.type === "read")
 
-                if (foundIndex !== -1) {
-                    let lastTextBlock = pipeline.length - 1 - foundIndex
+                if (_foundIndexReversed !== -1) {
+                    let lastTextBlock =
+                        pipeline.length - 1 - _foundIndexReversed
                     let elem = pipeline[lastTextBlock] as ReadStage // Since this is definitely a `type: "read"`
 
                     elem.rect.push(block.rect)
@@ -347,6 +351,9 @@ export default function FileImage({
                             ...block,
                             text: block.text.toLowerCase(),
                             rect: block.rect,
+                            line:
+                                (elem.reads[elem.reads.length - 1].line || 0) +
+                                1,
                         }))
                     )
 

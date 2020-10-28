@@ -1,5 +1,6 @@
 import React, { useMemo, useReducer, useState } from "react"
-import EditImage from "./EditImage"
+import { FileKey } from "./App"
+import EditImage, { Pipeline } from "./EditImage"
 import { preSanitize } from "./sanitize"
 import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
@@ -53,6 +54,7 @@ interface Word {
     rect: Rect
     text: string
     linebreak: string | false
+    prepunctuation: boolean
 }
 
 // TODO: Add padding to rects
@@ -76,23 +78,28 @@ const mapBlock = (block): LineBlock => {
     const lines = parags.flatMap((p) => {
         let words: Word[] = p.words.map((w) => {
             // Join the words together
-            let word = w.symbols.map(({ text }) => text).join("")
+            let word = w.symbols
+                .map(({ text }) => text)
+                .join("")
+                .replace(/[\u2018\u2019]/g, "'") // replace smarty-pants quotes to actual normal quotes please
+                .replace(/[\u201C\u201D]/g, '"')
             let lastSym = w.symbols[w.symbols.length - 1]
+            let firstSym = w.symbols[0]
             let linebreak: string | false =
                 lastSym &&
                 lastSym.property &&
                 lastSym.property.detectedBreak.type
-            if (linebreak) console.log(linebreak)
 
             let boundingBoxes = w.symbols.map(({ boundingBox }) =>
                 getOuterBounds(boundingBox)
             )
             let outerBoundingBox = expandOuterBounds(boundingBoxes)
 
-            let stoppers = [",", ".", "!", "?", ":", ";", "-"]
+            let stoppers = [",", ".", "!", "?", ":", ";", "-", '"']
             return {
                 rect: outerBoundingBox,
                 text: word,
+                prepunctuation: firstSym && stoppers.includes(firstSym.text),
                 linebreak:
                     lastSym && stoppers.includes(lastSym.text)
                         ? "PUNCTUATION"
@@ -109,6 +116,10 @@ const mapBlock = (block): LineBlock => {
                 line: currentLine,
             })
         words.forEach((word) => {
+            if (word.prepunctuation && line.length > 0) {
+                pushLine(line)
+                line = []
+            }
             line.push(word)
             if (
                 word.linebreak &&
@@ -196,7 +207,15 @@ export interface ReadStage {
     blockuntil: boolean
 }
 
-export default function Edit({ res, images, onFinish }) {
+export default function Edit({
+    res,
+    images,
+    onFinish,
+}: {
+    res: any[]
+    images: FileKey[]
+    onFinish: any
+}) {
     // res[0][0].fullTextAnnotation.pages[0].blocks
     const [index, setIndex] = useState(0)
 
@@ -214,12 +233,13 @@ export default function Edit({ res, images, onFinish }) {
         return draw
     }, [res])
 
-    const [pipelines, _setPipelines] = useState(
-        images.map(() => ({
+    const [pipelines, _setPipelines] = useState<Pipeline[]>(
+        images.map(({ key }) => ({
             pipeline: [],
             settings: {
                 showFirst: false,
             },
+            image: key,
         }))
     )
     const setPipeline = (i) => (pipe) =>
@@ -246,10 +266,7 @@ export default function Edit({ res, images, onFinish }) {
             const rangedPipeline = settings.useRange
                 ? realPipeline.slice(0, settings.range)
                 : realPipeline
-            const rangedImages = settings.useRange
-                ? images.slice(0, settings.range)
-                : images
-            await onFinish(rangedPipeline, rangedImages, settings)
+            await onFinish(rangedPipeline, settings)
             setStage(2)
         } catch (error) {
             console.error("error")
@@ -339,11 +356,13 @@ export default function Edit({ res, images, onFinish }) {
                                 Number {index + 1} out of {pipelines.length}
                             </div>
                             <div className="card">Time: {estimatedTime}</div>
-                            <div className="card">Filetype: {img.type}</div>
+                            <div className="card">
+                                Filetype: {img.file.type}
+                            </div>
                         </div>
                         <EditImage
-                            key={img}
-                            src={img}
+                            key={img.key}
+                            src={img.file}
                             blocks={drawBlocks[index]}
                             pipeline={pipelines[index].pipeline}
                             setPipeline={setPipeline(index)}
