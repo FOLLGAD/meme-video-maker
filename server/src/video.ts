@@ -437,6 +437,7 @@ async function makeImageThing(
                         ffmpeg(speechFile)
                             .complexFilter("[0:0]apad")
                             .duration(durationOfSegment)
+                            .audioFrequency(48000)
                             .outputOptions([
                                 "-flags +cgop",
                                 "-codec:a aac",
@@ -473,6 +474,7 @@ async function makeImageThing(
                         )
                         .autopad()
                         .fps(30)
+                        .audioFrequency(48000)
                         .outputOptions([
                             // "-shortest", // Shouldn't be necessary, but just in case
                             "-codec:v libx264",
@@ -514,23 +516,24 @@ async function makeImageThing(
             if (pauseTime === 0.0) continue
 
             try {
-                const f: FileResult = await new Promise(async (res, rej) => {
-                    const f = await file({ dir: dir.path, postfix: ".mp4" })
+                const pngf = await file({ dir: dir.path, postfix: ".png" })
 
-                    const pngf = await file({ dir: dir.path, postfix: ".png" })
+                const st = createWriteStream(pngf.path)
+                await new Promise((res) =>
+                    imageCanvas.createPNGStream().pipe(st).on("finish", res)
+                )
 
-                    const st = createWriteStream(pngf.path)
-                    await new Promise((res) =>
-                        imageCanvas.createPNGStream().pipe(st).on("finish", res)
-                    )
-
-                    ffmpeg()
-                        .input(pngf.path)
-                        .inputOptions(["-loop 1"])
+                let out = await new Promise<FileResult>(async (res, rej) => {
+                    let f = await file({
+                        dir: dir.path,
+                        postfix: ".mp4",
+                    })
+                    ffmpeg(pngf.path)
+                        .inputOption("-loop 1")
                         .input(
                             // Insert an empty audio stream, otherwise the
                             // pauses fuck up the rest of the vid
-                            "anullsrc=cl=mono:r=48000"
+                            "anullsrc=cl=stereo:r=48000"
                         )
                         .inputOptions(["-f lavfi"])
                         .size(
@@ -540,11 +543,9 @@ async function makeImageThing(
                             )
                         )
                         .autopad()
-                        .videoCodec("libx264")
-                        .audioCodec("aac")
-                        .audioFrequency(48000)
-                        .audioChannels(2)
+                        .fps(30)
                         .duration(pauseTime)
+                        .audioFrequency(48000)
                         .outputOptions([
                             "-codec:v libx264",
                             "-crf 21",
@@ -555,6 +556,7 @@ async function makeImageThing(
                             "-strict -2",
                             "-b:a 384k",
                             "-r:a 48000",
+                            "-ac 2",
                             "-movflags faststart",
                         ])
                         .save(f.path)
@@ -568,7 +570,9 @@ async function makeImageThing(
                         .on("end", () => res(f))
                 })
 
-                vids.push(f.path)
+                console.log(out.path)
+
+                vids.push(out.path)
             } catch (error) {
                 console.error("Pause failed:", error)
             }
@@ -589,7 +593,7 @@ async function makeImageThing(
                     .input(
                         // Insert an empty audio stream, otherwise the
                         // pauses fuck up the rest of the vid
-                        "anullsrc=cl=mono:r=48000"
+                        "anullsrc=cl=stereo:r=48000"
                     )
                     .inputOptions(["-f lavfi"])
                     .audioCodec("aac")
@@ -633,6 +637,8 @@ async function makeImageThing(
         }
         console.timeEnd("render_stage")
     }
+
+    console.log(vids)
 
     if (vids.length === 0) {
         return null

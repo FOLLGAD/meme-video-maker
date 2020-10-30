@@ -641,15 +641,12 @@ router
             email: { S: ctx.state.user.email },
         }
 
-        await new Promise((res, rej) =>
-            dynamodb.putItem(
-                {
-                    Item,
-                    TableName: dbThemeName,
-                },
-                (err, data) => (err ? rej(err) : res(data))
-            )
-        )
+        await dynamodb
+            .putItem({
+                Item,
+                TableName: dbThemeName,
+            })
+            .promise()
 
         ctx.body = {
             success: true,
