@@ -659,7 +659,10 @@ app.use(async (ctx, next) => {
 
 app.use((ctx, next) => {
     // Logging
-    console.log(`${ctx.method} ${ctx.url} - ${new Date().toISOString()}`)
+    let user = ctx.state.user ? ctx.state.user.email : "unauthed"
+    console.log(
+        `${ctx.method} ${ctx.url} - ${new Date().toISOString()} ${user}`
+    )
     return next()
 })
 
