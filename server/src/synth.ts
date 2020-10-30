@@ -129,7 +129,9 @@ function insertBookmarks(array: string[]) {
 const wrapStringsInSSML = (strings: string[]) => `
     <speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
         <voice name="ScanSoft Daniel_Full_22kHz">
-            ${insertBookmarks(strings)}
+            <prosody volume="-6dB">
+                ${insertBookmarks(strings)}
+            </prosody>
         </voice>
     </speak>
 `
