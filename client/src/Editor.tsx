@@ -21,6 +21,15 @@ interface BoundingPoly {
     vertices: [Vertex, Vertex, Vertex, Vertex]
 }
 
+const padding = 8
+
+const addPadding = (rect: Rect): Rect => ({
+    height: rect.height + padding * 2,
+    width: rect.width + padding * 2,
+    x: rect.x - padding,
+    y: rect.y - padding,
+})
+
 const getOuterBounds = ({ vertices }: BoundingPoly): Rect => {
     let xs = vertices.map(({ x }) => x)
     let ys = vertices.map(({ y }) => y)
@@ -56,9 +65,6 @@ interface Word {
     linebreak: string | false
     prepunctuation: boolean
 }
-
-// TODO: Add padding to rects
-const padding = 3
 
 export interface Line {
     rect: Rect[]
@@ -143,6 +149,8 @@ const mapBlock = (block): LineBlock => {
                 // replace l'll with I'll (google vision error)
                 .replace(/l'll|l've|\bl\b/g, (sub) => sub.replace("l", "I"))
 
+            line.rect = line.rect.map((r) => addPadding(r))
+
             line.text = preSanitize(line.text)
         })
 
@@ -151,7 +159,7 @@ const mapBlock = (block): LineBlock => {
 
     return {
         blocks: lines,
-        rect: getOuterBounds(block.boundingBox),
+        rect: addPadding(getOuterBounds(block.boundingBox)),
     }
 }
 

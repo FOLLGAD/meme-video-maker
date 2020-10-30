@@ -3,9 +3,19 @@ import * as Canvas from "canvas"
 import * as ffmpeg from "fluent-ffmpeg"
 import { createWriteStream, writeFileSync } from "fs"
 import { join } from "path"
-import { file, FileResult, fileSync, setGracefulCleanup } from "tmp-promise"
-import { makeIntoS3Url } from "./utils"
+import {
+    dirSync,
+    file,
+    FileResult,
+    fileSync,
+    setGracefulCleanup,
+} from "tmp-promise"
 import { synthSpeech } from "./synth"
+import { makeIntoS3Url } from "./utils"
+
+const dir = dirSync({ unsafeCleanup: true })
+
+setGracefulCleanup()
 
 // For forking this process
 process.on(
@@ -13,14 +23,12 @@ process.on(
     async ([pipes, videosettings]: [Pipeline[], VideoSettings]) => {
         try {
             const vidPath = await makeVids(pipes, videosettings)
-            process.send!({ isError: false, data: vidPath })
+            process.send!({ isError: false, data: vidPath, file: vidPath })
         } catch (error) {
             process.send!({ isError: true, data: error })
         }
     }
 )
-
-setGracefulCleanup()
 
 const blockColor = "black"
 
@@ -156,7 +164,7 @@ async function convToDims(
     )
     if (vidStream) return vidPAth
 
-    const f = await file({ postfix: ".mp4" })
+    const f = await file({ dir: dir.path, postfix: ".mp4" })
 
     await new Promise((r, x) =>
         ffmpeg(vidPAth)
@@ -190,7 +198,7 @@ async function convToDims(
 export async function makeVids(
     pipelines: Pipeline[],
     videoSettings: VideoSettings
-): Promise<string> {
+): Promise<FileResult> {
     videoSettings.outWidth = videoSettings.outWidth || 1920
     videoSettings.outHeight = videoSettings.outHeight || 1080
 
@@ -211,7 +219,6 @@ export async function makeVids(
 
     console.log("Concatting w/ transitions")
     await simpleConcat(vidsMid, out.path)
-    console.log("out:", out.path)
 
     if (videoSettings.song) {
         const songout = await file({ postfix: ".mp4" })
@@ -220,9 +227,8 @@ export async function makeVids(
 
         await combineVideoAudio(out.path, videoSettings.song!, songout.path)
 
-        // out.cleanup()
+        out.cleanup()
         out = songout
-        console.log("songout:", songout.path)
     }
 
     const vidsFull = [out.path]
@@ -260,9 +266,10 @@ export async function makeVids(
         vidPath = await file({ postfix: ".mp4" })
         console.log("Adding intro, outro")
         await simpleConcat(vidsFull, vidPath.path)
+        out.cleanup()
     }
 
-    return vidPath.path
+    return vidPath
 }
 
 async function makeImageThing(
@@ -296,7 +303,7 @@ async function makeImageThing(
     const vids: string[] = []
 
     const getSnapshot = async (): Promise<FileResult> => {
-        const pngf = await file({ postfix: ".png" })
+        const pngf = await file({ dir: dir.path, postfix: ".png" })
 
         const st = createWriteStream(pngf.path)
         await new Promise((res, rej) =>
@@ -374,7 +381,7 @@ async function makeImageThing(
 
                 const pngs: FileResult[] = []
                 let lastLine = stage.reads[stage.reads.length - 1]?.line || null
-                console.log(stage.reads)
+                // console.log(stage.reads)
                 for (let i = 0; i < stage.reads.length; i++) {
                     const read = stage.reads[i]
                     // Clear this read from the blocker
@@ -426,7 +433,7 @@ async function makeImageThing(
                 let durationOfSegment = realSegments[realSegments.length - 1]
                 let audioFile = await new Promise<FileResult>(
                     async (res, rej) => {
-                        let f = await file({ postfix: ".aac" }) // MP3 can't store "AAC", which is what we use for the MP4 audio
+                        let f = await file({ dir: dir.path, postfix: ".aac" }) // MP3 can't store "AAC", which is what we use for the MP4 audio
                         ffmpeg(speechFile)
                             .complexFilter("[0:0]apad")
                             .duration(durationOfSegment)
@@ -455,7 +462,7 @@ async function makeImageThing(
                 console.log("finished audio")
 
                 let out = await new Promise<FileResult>(async (res, rej) => {
-                    let f = await file({ postfix: ".mp4" })
+                    let f = await file({ dir: dir.path, postfix: ".mp4" })
                     timedConcat(videoSched)
                         .input(audioFile.path)
                         .size(
@@ -508,9 +515,9 @@ async function makeImageThing(
 
             try {
                 const f: FileResult = await new Promise(async (res, rej) => {
-                    const f = await file({ postfix: ".mp4" })
+                    const f = await file({ dir: dir.path, postfix: ".mp4" })
 
-                    const pngf = await file({ postfix: ".png" })
+                    const pngf = await file({ dir: dir.path, postfix: ".png" })
 
                     const st = createWriteStream(pngf.path)
                     await new Promise((res) =>
@@ -576,7 +583,7 @@ async function makeImageThing(
             const times = Math.min(Math.abs(stage.times), 10)
 
             const f: FileResult = await new Promise(async (res, rej) => {
-                const f = await file({ postfix: ".mp4" })
+                const f = await file({ dir: dir.path, postfix: ".mp4" })
 
                 ffmpeg(image)
                     .input(
@@ -631,7 +638,7 @@ async function makeImageThing(
         return null
     }
 
-    const out = await file({ postfix: ".mp4" })
+    const out = await file({ dir: dir.path, postfix: ".mp4" })
     await simpleConcat(vids, out.path)
 
     console.log("vid concat", out.path)
@@ -640,7 +647,7 @@ async function makeImageThing(
 }
 
 function timedConcat(videos: { path: string; duration: number }[]) {
-    const txt = fileSync({ postfix: ".txt" })
+    const txt = fileSync({ dir: dir.path, postfix: ".txt" })
     const tempPath = txt.name
 
     writeFileSync(
@@ -652,7 +659,7 @@ function timedConcat(videos: { path: string; duration: number }[]) {
 }
 
 function getConcat(videoPaths: string[]) {
-    const txt = fileSync({ postfix: ".txt" })
+    const txt = fileSync({ dir: dir.path, postfix: ".txt" })
     const tempPath = txt.name
 
     writeFileSync(tempPath, videoPaths.map((d) => `file '${d}'\n`).join(""))

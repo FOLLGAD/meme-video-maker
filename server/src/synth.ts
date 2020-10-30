@@ -1,6 +1,5 @@
 // This file is for the tts calls
 
-import { ffprobe } from "fluent-ffmpeg"
 import * as fs from "fs"
 import * as latinize from "latinize"
 import fetch from "node-fetch"
@@ -145,7 +144,6 @@ export async function synthDaniel(
         strings.map(insertBreaks)
     ).map((s) => encodeXML(s))
 
-    console.log(xmlEscapedAndDashed)
     // Add breaks before & after double quotes
     let xmlWithBreaks: string[] = []
 
@@ -161,11 +159,8 @@ export async function synthDaniel(
             xmlWithBreaks[i - 1] += weakBreak
         }
     })
-    console.log(xmlWithBreaks)
 
     let data
-
-    console.log(wrapStringsInSSML(xmlWithBreaks))
 
     let tries = 0
     while (true) {

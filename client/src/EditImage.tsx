@@ -40,8 +40,6 @@ interface Read {
 
 interface BaseStage {
     type: string
-    id: number
-    _index: number
 }
 
 export interface ReadStage extends BaseStage {
@@ -69,7 +67,17 @@ export interface DivStage extends BaseStage {
     type: "div"
 }
 
-export type Stage = ReadStage | PauseStage | RevealStage | GifStage | DivStage
+export type RawStage =
+    | ReadStage
+    | PauseStage
+    | RevealStage
+    | GifStage
+    | DivStage
+
+export type Stage = RawStage & {
+    id: number
+    _index: number
+}
 
 export type ImageSettings = {
     showFirst: false
@@ -203,7 +211,7 @@ export default function FileImage({
         setMouseDownAt([mouseX, mouseY])
     }
 
-    const addStage = (stage) => {
+    const addStage = (stage: RawStage & { _index?: null | number }) => {
         const newStage = { ...stage, id: counter++ }
         if (stage.type === "reveal")
             return setPipeline([
@@ -222,7 +230,7 @@ export default function FileImage({
         else return setPipeline([...pipeline, newStage, { type: "div" }])
     }
 
-    const addStages = (stages: any[]) =>
+    const addStages = (stages: RawStage[]) =>
         setPipeline([
             ...pipeline,
             ...stages.map((stage) => ({ ...stage, id: counter++ })),
@@ -287,7 +295,7 @@ export default function FileImage({
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
             // Mouse was dragged
             // add a reveal rect
-            let arr: { type: string; [key: string]: any }[] = []
+            let arr: RawStage[] = []
 
             arr.push({ type: "reveal", rect })
             arr.push({ type: "div" })
@@ -360,7 +368,7 @@ export default function FileImage({
                     updateStage(lastTextBlock, elem)
                 }
             } else {
-                const newStage: ReadStage = {
+                const newStage: Stage = {
                     type: "read",
                     _index: clickedBlock,
                     id: counter++,
@@ -451,7 +459,7 @@ export default function FileImage({
                 onClick={() =>
                     addStage({
                         type: "read",
-                        text: "",
+                        reads: [{ rect: [], text: "" }],
                         blockuntil: false,
                         reveal: false,
                         _index: null,

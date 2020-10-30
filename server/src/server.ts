@@ -13,11 +13,15 @@ import * as koaMultiBody from "koa-body"
 import * as koaBodyParser from "koa-bodyparser"
 import * as Router from "koa-router"
 import { join } from "path"
-import { file } from "tmp-promise"
+import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
 import { makeIntoS3Url } from "./utils"
 import { normalizeVideo, Pipeline } from "./video"
 import { readImages, readRemoteImages } from "./vision"
+
+import * as jwt from "jsonwebtoken"
+import * as bcrypt from "bcrypt"
+const saltRounds = 10
 
 config()
 AWS.config.region = "eu-central-1"
@@ -37,6 +41,7 @@ const FilesBucket = "carp-files"
 const UploadsBucket = "carp-uploads"
 // DynamoDB table
 const dbThemeName = "4chan-themes"
+const dbUsersName = "carp-users"
 
 const koaBody = koaMultiBody({
     multipart: true,
@@ -55,10 +60,14 @@ const koaLargeBody = koaMultiBody({
 
 const bodyParser = koaBodyParser()
 
-const app = new Koa()
+interface CustomKoaState {
+    user?: { email: string }
+}
+
+const app = new Koa<CustomKoaState, {}>()
 const router = new Router()
 
-app.use(cors())
+app.use(cors({ credentials: true }))
 
 const cache = new Map()
 
@@ -97,7 +106,7 @@ async function getFile(s3_key: string): Promise<string> {
                 async (err, data) => {
                     if (err || !data.Body) return rej(err)
 
-                    const f = await file({ postfix: s3_key })
+                    const f = await file({ postfix: s3_key.replace("/", "_") })
                     writeFileSync(f.path, data.Body as any)
                     cache.set(s3_key, f)
 
@@ -122,7 +131,7 @@ const generateName = () => {
     // CurrentDate =    YYMMDDHHmm
     const nextCentury = 9911312359
     return (
-        "test-carp-" +
+        "carp-" +
         (nextCentury - currentDate).toString(36) + // Get the time until next century, in base 36
         "-" +
         uuidv4().slice(0, 8) +
@@ -139,7 +148,7 @@ const expectJson = (c) => {
 
 const logDate = () => new Date().toLocaleString()
 
-async function makeVid(rawSet, pipeline: Pipeline[]): Promise<void> {
+async function makeVid(rawSet, pipeline: Pipeline[]): Promise<FileResult> {
     const settings = {
         ...rawSet,
         intro: rawSet.intro ? await getFile(rawSet.intro) : undefined,
@@ -156,35 +165,25 @@ async function makeVid(rawSet, pipeline: Pipeline[]): Promise<void> {
 
     process.send([pipeline, settings])
 
-    return await new Promise((res, rej) => {
+    return await new Promise<FileResult>((res, rej) => {
         process.on(
             "message",
-            async ({ isError, data }: { isError: boolean; data: any }) => {
+            async ({
+                isError,
+                data,
+                file,
+            }: {
+                isError: boolean
+                data: any
+                file: FileResult
+            }) => {
                 if (isError) return rej(data)
 
-                console.log(logDate(), "Video finished on ", data)
-                const now = new Date()
-
-                const expires = new Date()
-                expires.setMonth(now.getMonth() + 1)
-
-                const name = generateName()
-
-                await new Promise((r1, e1) => {
-                    s3.upload(
-                        {
-                            Bucket,
-                            Body: createReadStream(data),
-                            Key: name,
-                            Expires: expires, // HTTP-date
-                        },
-                        (err) => (err ? e1(err) : r1())
-                    )
-                })
+                console.log(logDate(), "Video finished on ", file.path)
 
                 process.kill()
 
-                res()
+                res(file)
             }
         )
 
@@ -214,29 +213,145 @@ const parseFiles = (info: any[], files): { id: number; image: string }[] => {
     })
 }
 
+const publicRouter = new Router()
+    .post("/logout", koaBody, async (ctx) => {
+        ctx.cookies.set("token")
+
+        ctx.status = 204
+    })
+    .post("/auth", koaBody, async (ctx) => {
+        const { email: reqEmail, password: reqPassword } = ctx.request.body
+
+        ctx.assert(reqEmail, 400, "Please supply an email address")
+        ctx.assert(reqPassword, 400, "Please supply a password")
+
+        const data = await new Promise<AWS.DynamoDB.GetItemOutput>((res, rej) =>
+            dynamodb.getItem(
+                {
+                    // Item,
+                    Key: {
+                        email: {
+                            S: reqEmail,
+                        },
+                    },
+                    TableName: dbUsersName,
+                },
+                (err, data) => (err ? rej(err) : res(data))
+            )
+        )
+        if (!data.Item) {
+            ctx.throw(400, "Wrong password or email")
+            return
+        }
+
+        const { email, password } = data.Item
+        const result = await bcrypt.compare(reqPassword, password.S!)
+
+        if (result !== true) {
+            ctx.throw(400, "Wrong password or email")
+            return
+        }
+
+        const token = jwt.sign(
+            {
+                email: email.S,
+            },
+            process.env.JWT_SECRET!,
+            { expiresIn: "30d" }
+        )
+
+        ctx.cookies.set("token", token, {
+            httpOnly: true,
+            overwrite: true,
+        })
+
+        ctx.body = token
+    })
+
+const authenticate = async (
+    ctx: Koa.ParameterizedContext<
+        CustomKoaState,
+        Router.IRouterParamContext<CustomKoaState, {}>
+    >,
+    next: any
+) => {
+    const token = ctx.cookies.get("token") || ctx.header["access-token"]
+    try {
+        const payload: any = jwt.verify(token, process.env.JWT_SECRET!)
+        ctx.state.user = { email: payload.email }
+        await next()
+    } catch (error) {
+        ctx.status = 401
+        return
+    }
+}
+
+const namespaceKey = (name: string, key: string = ""): string => {
+    if (!name) throw new Error("Warning: no name was supplied in NamepsaceKey")
+    if (key.indexOf("/") !== -1)
+        console.error("WARNING: Key contains /, this is not good!!")
+    return `${name}/${key}`
+}
+
+const unNamespaceKey = (key: string): string => {
+    return key.slice(key.lastIndexOf("/") + 1)
+}
+
+const inProgress: { email: string; name: string }[] = []
+
 router
-    // .get("/signed-uploads", async (ctx) => {
-    //     let amount = ctx.query.amount || 1
-    //     let a: string[] = []
-    //     try {
-    //         for (let i = 0; i < amount; i++) {
-    //             let key = uuidv4()
-    //             let p: string = await new Promise((res, rej) => {
-    //                 s3.getSignedUrl(
-    //                     "putObject",
-    //                     { Bucket: MemesBucket, Key: key },
-    //                     (err, url) => {
-    //                         err ? rej(err) : res(url)
-    //                     }
-    //                 )
-    //             })
-    //             a.push(p)
-    //         }
-    //     } catch (err) {
-    //         ctx.status = 500
-    //         ctx.body = { error: "disdn't owrk for some reason" }
-    //     }
-    // })
+    // Require auth for everyone of these routes
+    .use(authenticate)
+    .post("/register", koaBody, async (ctx) => {
+        const { email, password } = ctx.request.body
+
+        if (email.length < 5) {
+            ctx.throw(400, "Email must be at least 5 characters long")
+        }
+        if (password.length < 6) {
+            ctx.throw(400, "Password must be at least 6 chars long")
+        }
+        if (email.includes("/")) {
+            ctx.throw(400, "Email contains illegal characters")
+        }
+
+        const alreadyExists = await new Promise<AWS.DynamoDB.GetItemOutput>(
+            (res, rej) =>
+                dynamodb.getItem(
+                    {
+                        // Item,
+                        Key: {
+                            email: {
+                                S: email,
+                            },
+                        },
+                        TableName: dbUsersName,
+                    },
+                    (err, data) => (err ? rej(err) : res(data))
+                )
+        )
+        if (alreadyExists.Item) {
+            ctx.status = 500
+            return
+        }
+
+        const hashed = await bcrypt.hash(password, saltRounds)
+
+        await new Promise<AWS.DynamoDB.PutItemOutput>((res, rej) => {
+            dynamodb.putItem(
+                {
+                    TableName: dbUsersName,
+                    Item: {
+                        email: { S: email },
+                        password: { S: hashed },
+                    },
+                },
+                (err, data) => (err ? rej(err) : res(data))
+            )
+        })
+
+        ctx.status = 204
+    })
     .post("/v2/get-signed-urls", async (ctx) => {
         const amount = parseInt(ctx.query.amount)
         if (amount <= 0 || amount > 500) {
@@ -252,11 +367,10 @@ router
         let datas: AWS.S3.PresignedPost[] = []
 
         for (let i = 0; i < amount; i++) {
-            const fileName = `carp/${uuidv4()}` // create a unique file name
             const s3Params: AWS.S3.PresignedPost.Params = {
                 Bucket: UploadsBucket,
                 Fields: {
-                    key: fileName,
+                    key: namespaceKey(ctx.state.user.email, uuidv4()), // Unique file name
                 },
                 Conditions: [
                     ["content-length-range", 0, 100000000],
@@ -289,38 +403,41 @@ router
             settings,
         }: { pipeline: Pipeline[]; settings: any } = body
 
-        console.log(body)
+        const name = generateName()
 
-        addToQueue(() => makeVid(settings, pipeline))
+        inProgress.push({ email: ctx.state.user.email, name })
+        console.log(inProgress)
+
+        const now = new Date()
+        const expires = new Date()
+        expires.setMonth(now.getMonth() + 1)
+
+        addToQueue(() =>
+            makeVid(settings, pipeline).then(async (file) => {
+                await new Promise((r1, e1) => {
+                    s3.upload(
+                        {
+                            Bucket,
+                            Body: createReadStream(file.path),
+                            Key: namespaceKey(ctx.state.user.email, name),
+                            Expires: expires, // HTTP-date
+                        },
+                        (err) => (err ? e1(err) : r1())
+                    )
+                })
+                inProgress.splice(
+                    inProgress.findIndex((d) => d.name === name),
+                    1
+                )
+            })
+        )
 
         ctx.body = {
             success: true,
         }
     })
-    .post("/vision", koaBody, async (ctx) => {
-        // id corresponds to an entry
-        const { files, body } = ctx.request
-        const info: { id: number }[] = JSON.parse(body.info)
-
-        const images = parseFiles(info, files)
-
-        const res = await readImages(images)
-
-        ctx.body = res
-    })
-    // .post("/make-vid", koaBody, async (ctx) => {
-    //     const { files, body } = ctx.request
-    //     const images = parseFiles(JSON.parse(body.info), files)
-
-    //     const pipeline: Pipeline[] = JSON.parse(body.pipeline)
-    //     const rawSet: any = JSON.parse(body.settings)
-
-    //     addToQueue(() => makeVid(rawSet, pipeline, images))
-
-    //     ctx.body = {
-    //         success: true,
-    //     }
-    // })
+    // TODO: This can be replaced with a lambda that
+    // automatically normalizes S3 files and puts them in a "finished" folder
     .post("/upload-file", koaLargeBody, async (ctx) => {
         const { files } = ctx.request
         if (!files) throw new Error("Please send a file")
@@ -344,7 +461,7 @@ router
                     {
                         Bucket: FilesBucket,
                         Body: createReadStream(newPath),
-                        Key: name,
+                        Key: namespaceKey(ctx.state.user.email, name),
                     },
                     (err, data) => (err ? rej(err) : res(data))
                 )
@@ -371,7 +488,7 @@ router
             s3.getObject(
                 {
                     Bucket,
-                    Key: ctx.params.key,
+                    Key: namespaceKey(ctx.state.user.email, ctx.params.key),
                 },
                 (err, data) => {
                     err ? rej(err) : res(data)
@@ -386,7 +503,7 @@ router
         const data: ListObjectsOutput = await new Promise((res, rej) => {
             s3.listObjects(
                 {
-                    Prefix: "test-carp",
+                    Prefix: namespaceKey(ctx.state.user.email),
                     Bucket,
                     MaxKeys: 10,
                 },
@@ -398,6 +515,9 @@ router
 
         ctx.body = {
             data: data.Contents,
+            inProgress: inProgress.filter(
+                (p) => p.email === ctx.state.user.email
+            ),
         }
     })
     .get("/files", async (ctx) => {
@@ -406,6 +526,7 @@ router
                 s3.listObjectsV2(
                     {
                         Bucket: FilesBucket,
+                        Prefix: namespaceKey(ctx.state.user.email),
                         MaxKeys: 100,
                     },
                     (err, data) => {
@@ -431,6 +552,10 @@ router
                 dynamodb.scan(
                     {
                         TableName: dbThemeName,
+                        FilterExpression: "email = :ownerEmail",
+                        ExpressionAttributeValues: {
+                            ":ownerEmail": { S: ctx.state.user.email },
+                        },
                     },
                     (err, data) => (err ? rej(err) : res(data))
                 )
@@ -481,6 +606,7 @@ router
             outro: checker(outro),
             song: checker(song),
             voice: checker(voice),
+            email: { S: ctx.state.user.email },
         }
 
         await new Promise((res, rej) =>
@@ -502,7 +628,10 @@ router
             await new Promise((res, rej) =>
                 dynamodb.deleteItem(
                     {
-                        Key: { themeId: { S: ctx.params.themeId } },
+                        Key: {
+                            themeId: { S: ctx.params.themeId },
+                            email: { S: ctx.state.user.email },
+                        },
                         TableName: dbThemeName,
                     },
                     (err, data) => (err ? rej(err) : res(data))
@@ -527,6 +656,7 @@ app.use(async (ctx, next) => {
     }
 })
 
+app.use(publicRouter.routes()).use(publicRouter.allowedMethods())
 app.use(router.routes()).use(router.allowedMethods())
 
 app.listen(7000, () => console.log("Listening right now on port 7000"))

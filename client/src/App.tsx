@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react"
-import apiFetch from "./apiFetch"
+import React, { useContext, useEffect, useState } from "react"
+import { useFetch } from "./apiFetch"
+import Button from "./Button"
 import { Pipeline } from "./EditImage"
 import Editor from "./Editor"
+import Login from "./Login"
+import { Context } from "./Store"
 import Upload from "./Upload"
 import UploadTheme from "./UploadTheme"
 import VideoList from "./VideoList"
@@ -12,15 +15,11 @@ export interface FileKey {
 }
 
 function App() {
+    const apiFetch = useFetch()
+    const [state, dispatch] = useContext(Context)
     const [images, setImages] = useState<FileKey[] | null>(null)
     const [res, setRes] = useState<any[] | null>(null)
     const [dirty, setDirty] = useState(false)
-
-    const loadData = ({ images, res }) => {
-        setRes(res)
-        setImages(images)
-        setDirty(true)
-    }
 
     useEffect(() => {
         const func = (e) => {
@@ -29,6 +28,20 @@ function App() {
         window.addEventListener("beforeunload", func)
         return () => window.removeEventListener("beforeunload", func)
     }, [dirty])
+
+    if (!state.loggedIn) {
+        return (
+            <div className="app">
+                <Login onLogin={() => dispatch({ type: "LOGIN" })} />
+            </div>
+        )
+    }
+
+    const loadData = ({ images, res }) => {
+        setRes(res)
+        setImages(images)
+        setDirty(true)
+    }
 
     const finished = (pipeline: Pipeline[], settings) => {
         return apiFetch("/v2/render", {
@@ -40,33 +53,71 @@ function App() {
         }).then((d) => d.json())
     }
 
+    const logout = () => {
+        apiFetch("/logout", {
+            method: "POST",
+        }).then(() => {
+            dispatch({ type: "LOGOUT" })
+        })
+    }
+
     return (
-        <div className="app">
-            {images && res ? (
-                <Editor res={res} images={images} onFinish={finished} />
-            ) : (
-                <div style={{ display: "flex" }}>
-                    <div style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>
-                        <div className="card">
-                            <h3>Upload memes (png/jpg/gif)</h3>
-                            <Upload setData={loadData} />
-                        </div>
-                        <div className="card">
-                            <h3>
-                                Upload intro/outro/transition/song <br /> (for
-                                creating theme later)
-                            </h3>
-                            <UploadTheme />
-                        </div>
-                    </div>
+        <div>
+            <div className="app">
+                {images && res ? (
+                    <Editor res={res} images={images} onFinish={finished} />
+                ) : (
                     <div
-                        className="card"
-                        style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                        }}
                     >
-                        <VideoList />
+                        <div style={{ display: "flex" }}>
+                            <div
+                                style={{
+                                    flexGrow: 1,
+                                    flexBasis: 1,
+                                    minWidth: 300,
+                                }}
+                            >
+                                <div className="card">
+                                    <h3>Upload memes</h3>
+                                    <p>Allowed formats: .png, .jpg, .gif</p>
+                                    <Upload setData={loadData} />
+                                </div>
+                                <div className="card">
+                                    <h3>
+                                        Upload intro/outro/transition/song
+                                        <br /> (for creating theme later)
+                                    </h3>
+                                    <UploadTheme />
+                                </div>
+                            </div>
+                            <div
+                                className="card"
+                                style={{
+                                    flexGrow: 1,
+                                    flexBasis: 1,
+                                    minWidth: 300,
+                                }}
+                            >
+                                <VideoList />
+                            </div>
+                        </div>
+                        <div style={{ width: 720 }}>
+                            <Button onClick={logout}>Log out</Button>
+                            <div style={{ paddingTop: "2rem" }}>
+                                Contact:{" "}
+                                <a href="mailto:emil@tentium.se">
+                                    emil@tentium.se
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }

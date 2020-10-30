@@ -1,5 +1,22 @@
+import { useContext } from "react"
+import { Context } from "./Store"
+
 export const apiUrl = process.env.REACT_APP_API_URL
 
 export default function apiFetch(url: string, reqInit?: RequestInit) {
-    return fetch(apiUrl + url, reqInit)
+    return fetch(apiUrl + url, { ...reqInit, credentials: "include" })
+}
+
+export function useFetch() {
+    const [state, dispatch] = useContext(Context)
+
+    return (url: string, reqInit?: RequestInit) => {
+        return apiFetch(url, reqInit).then((res) => {
+            if (res.status === 401) {
+                dispatch({ type: "LOGOUT" })
+                throw new Error("Unauthorized")
+            }
+            return res
+        })
+    }
 }

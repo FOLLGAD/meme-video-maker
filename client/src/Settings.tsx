@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react"
-import apiFetch from "./apiFetch"
 import Modal from "react-modal"
-import { Stage } from "./EditImage"
+import { useFetch } from "./apiFetch"
 
 Modal.setAppElement("#root")
 
@@ -31,6 +30,7 @@ export default function ({
     dispatchSettings: (arg1: any) => void
     onSubmit: (arg1: any) => void
 }) {
+    const apiFetch = useFetch()
     const [files, setFiles] = useState({ videos: [], songs: [] })
     const [themes, setThemes] = useState<Theme[]>([])
 
