@@ -1,0 +1,11 @@
+TODO:
+
+shift-click adds the block as the last entry to a track-group
+DONE
+
+make sure the client sends the correct data struct to the server
+DONE?
+
+bookmarks:
+1.  several blocks should enable bookmarks
+2.  either play different images during the same audio file

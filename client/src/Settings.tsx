@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
-import apiFetch from "./apiFetch"
 import Modal from "react-modal"
+import { useFetch } from "./apiFetch"
 
 Modal.setAppElement("#root")
 
@@ -9,7 +9,28 @@ interface Theme {
     name: string
 }
 
-export default function ({ settings, pipeline, dispatchSettings, onSubmit }) {
+export interface Settings {
+    intro: string
+    transition: string
+    outro: string
+    voice: string
+    song: string
+    outWidth: number
+    outHeight: number
+    useRange: boolean
+    range: number
+}
+
+export default function ({
+    settings,
+    dispatchSettings,
+    onSubmit,
+}: {
+    settings: Settings
+    dispatchSettings: (arg1: any) => void
+    onSubmit: (arg1: any) => void
+}) {
+    const apiFetch = useFetch()
     const [files, setFiles] = useState({ videos: [], songs: [] })
     const [themes, setThemes] = useState<Theme[]>([])
 

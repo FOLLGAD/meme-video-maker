@@ -1,50 +1,167 @@
 import React, { useMemo, useReducer, useState } from "react"
-import EditImage from "./EditImage"
+import { FileKey } from "./App"
+import EditImage, { Pipeline } from "./EditImage"
+import { preSanitize } from "./sanitize"
 import Settings from "./Settings"
 import { estimateTimePretty } from "./timeCalc"
-import { preSanitize } from "./sanitize"
 
-function mapBlock(block) {
-    const vert = block.boundingBox.vertices
-    const { x, y } = vert[0]
-    const width = vert[2].x - vert[0].x
-    const height = vert[2].y - vert[0].y
+interface Rect {
+    x: number
+    y: number
+    width: number
+    height: number
+}
 
-    // Gather the text from this block
-    const text = block.paragraphs
-        .map((p) => {
-            let parag = p.words
-                .map((w) => {
-                    return w.symbols.map(({ text }) => text).join("")
-                })
-                .join(" ")
-            // remove >>12321332 (OP), >>1232313 (You)
-            parag = parag.replace(/>>\d+\s*(\(.+\))?/g, "").trim()
-            // replace l'll with I'll (google vision error)
-            parag = parag.replace(/l'll|l've|\Wl\W/g, (sub) =>
-                sub.replace("l", "I")
-            )
-            return parag
-        })
-        .join("\n")
-        .split("\n")
-        .map((d) => d.trim())
-        .join("\n")
+interface Vertex {
+    x: number
+    y: number
+}
 
-    const sanitizedText = preSanitize(text)
+interface BoundingPoly {
+    vertices: [Vertex, Vertex, Vertex, Vertex]
+}
+
+const padding = 8
+
+const addPadding = (rect: Rect): Rect => ({
+    height: rect.height + padding * 2,
+    width: rect.width + padding * 2,
+    x: rect.x - padding,
+    y: rect.y - padding,
+})
+
+const getOuterBounds = ({ vertices }: BoundingPoly): Rect => {
+    let xs = vertices.map(({ x }) => x)
+    let ys = vertices.map(({ y }) => y)
+    let xmin = Math.min(...xs)
+    let ymin = Math.min(...ys)
+    let xmax = Math.max(...xs)
+    let ymax = Math.max(...ys)
 
     return {
-        text: sanitizedText,
-        rect: {
-            x: x - padding,
-            y: y - padding,
-            width: width + padding * 2,
-            height: height + padding * 2,
-        },
+        x: xmin,
+        y: ymin,
+        width: xmax - xmin,
+        height: ymax - ymin,
     }
 }
 
-const padding = 3
+const expandOuterBounds = (rects: Rect[]): Rect => {
+    let minx = Math.min(...rects.map(({ x }) => x))
+    let miny = Math.min(...rects.map(({ y }) => y))
+    let xws = rects.map(({ x, width }) => x + width)
+    let yhs = rects.map(({ y, height }) => y + height)
+    return {
+        x: minx,
+        y: miny,
+        width: Math.max(...xws) - minx,
+        height: Math.max(...yhs) - miny,
+    }
+}
+
+interface Word {
+    rect: Rect
+    text: string
+    linebreak: string | false
+    prepunctuation: boolean
+}
+
+export interface Line {
+    rect: Rect[]
+    text: string
+    line: number
+}
+
+export interface LineBlock {
+    blocks: Line[]
+    rect: Rect
+}
+
+const mapBlock = (block): LineBlock => {
+    const parags: any[] = block.paragraphs
+
+    // Gather the text from this block
+    const lines = parags.flatMap((p) => {
+        let words: Word[] = p.words.map((w) => {
+            // Join the words together
+            let word = w.symbols
+                .map(({ text }) => text)
+                .join("")
+                .replace(/[\u2018\u2019]/g, "'") // replace smarty-pants quotes to actual normal quotes please
+                .replace(/[\u201C\u201D]/g, '"')
+            let lastSym = w.symbols[w.symbols.length - 1]
+            let firstSym = w.symbols[0]
+            let linebreak: string | false =
+                lastSym &&
+                lastSym.property &&
+                lastSym.property.detectedBreak.type
+
+            let boundingBoxes = w.symbols.map(({ boundingBox }) =>
+                getOuterBounds(boundingBox)
+            )
+            let outerBoundingBox = expandOuterBounds(boundingBoxes)
+
+            let stoppers = [",", ".", "!", "?", ":", ";", "-", '"']
+            return {
+                rect: outerBoundingBox,
+                text: word,
+                prepunctuation: firstSym && stoppers.includes(firstSym.text),
+                linebreak:
+                    lastSym && stoppers.includes(lastSym.text)
+                        ? "PUNCTUATION"
+                        : linebreak,
+            }
+        })
+        let lines: Line[] = []
+        let line: Word[] = []
+        let currentLine = 0
+        const pushLine = (line: Word[]) =>
+            lines.push({
+                rect: [expandOuterBounds(line.map((l) => l.rect))],
+                text: line.map((t) => t.text).join(" "),
+                line: currentLine,
+            })
+        words.forEach((word) => {
+            if (word.prepunctuation && line.length > 0) {
+                pushLine(line)
+                line = []
+            }
+            line.push(word)
+            if (
+                word.linebreak &&
+                ["EOL_SURE_SPACE", "LINE_BREAK", "PUNCTUATION"].includes(
+                    word.linebreak
+                )
+            ) {
+                pushLine(line)
+                if (word.linebreak !== "PUNCTUATION") currentLine++
+                line = []
+            }
+        })
+        if (line.length) pushLine(line)
+
+        // Mutate lines
+        lines.forEach((line) => {
+            // remove >>12321332 (OP), >>1232313 (You)
+            line.text = line.text
+                .replace(/>>\d+\s*(\(.+\))?/g, "")
+                .trim()
+                // replace l'll with I'll (google vision error)
+                .replace(/l'll|l've|\bl\b/g, (sub) => sub.replace("l", "I"))
+
+            line.rect = line.rect.map((r) => addPadding(r))
+
+            line.text = preSanitize(line.text)
+        })
+
+        return lines
+    })
+
+    return {
+        blocks: lines,
+        rect: addPadding(getOuterBounds(block.boundingBox)),
+    }
+}
 
 function settingsReducer(state, action) {
     switch (action.type) {
@@ -77,28 +194,60 @@ function settingsReducer(state, action) {
     }
 }
 
-export default function Edit({ res, images, onFinish }) {
+interface Rec {
+    x: number
+    y: number
+    height: number
+    width: number
+}
+
+interface Read {
+    rect: Rec[]
+    text: string
+}
+
+export interface ReadStage {
+    type: "read"
+    joinNext?: boolean
+    reads: Read[]
+    rect: Rec[]
+    reveal: boolean
+    blockuntil: boolean
+}
+
+export default function Edit({
+    res,
+    images,
+    onFinish,
+}: {
+    res: any[]
+    images: FileKey[]
+    onFinish: any
+}) {
     // res[0][0].fullTextAnnotation.pages[0].blocks
     const [index, setIndex] = useState(0)
 
     const img = images[index]
 
     const drawBlocks = useMemo(() => {
-        const draw = res.map((obj) => {
-            const blocks = obj.fullTextAnnotation
-                ? obj.fullTextAnnotation.pages[0].blocks
-                : []
-            return blocks.map(mapBlock)
+        const draw: LineBlock[][] = res.map((obj): LineBlock[] => {
+            if (obj.fullTextAnnotation) {
+                let blocks = obj.fullTextAnnotation.pages[0].blocks
+                return blocks.map(mapBlock)
+            } else {
+                return []
+            }
         })
         return draw
     }, [res])
 
-    const [pipelines, _setPipelines] = useState(
-        images.map(() => ({
+    const [pipelines, _setPipelines] = useState<Pipeline[]>(
+        images.map(({ key }) => ({
             pipeline: [],
             settings: {
                 showFirst: false,
             },
+            image: key,
         }))
     )
     const setPipeline = (i) => (pipe) =>
@@ -125,10 +274,7 @@ export default function Edit({ res, images, onFinish }) {
             const rangedPipeline = settings.useRange
                 ? realPipeline.slice(0, settings.range)
                 : realPipeline
-            const rangedImages = settings.useRange
-                ? images.slice(0, settings.range)
-                : images
-            await onFinish(rangedPipeline, rangedImages, settings)
+            await onFinish(rangedPipeline, settings)
             setStage(2)
         } catch (error) {
             console.error("error")
@@ -192,7 +338,6 @@ export default function Edit({ res, images, onFinish }) {
                     <Settings
                         settings={settings}
                         onSubmit={onSubmit}
-                        pipeline={pipelines}
                         dispatchSettings={dispatchSettings}
                     />
                     <button onClick={() => setStage(0)}>Back</button>
@@ -219,11 +364,13 @@ export default function Edit({ res, images, onFinish }) {
                                 Number {index + 1} out of {pipelines.length}
                             </div>
                             <div className="card">Time: {estimatedTime}</div>
-                            <div className="card">Filetype: {img.type}</div>
+                            <div className="card">
+                                Filetype: {img.file.type}
+                            </div>
                         </div>
                         <EditImage
-                            key={img}
-                            src={img}
+                            key={img.key}
+                            src={img.file}
                             blocks={drawBlocks[index]}
                             pipeline={pipelines[index].pipeline}
                             setPipeline={setPipeline(index)}

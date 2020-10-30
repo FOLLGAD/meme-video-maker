@@ -1,20 +1,25 @@
-import React, { useState, useEffect } from "react"
+import React, { useContext, useEffect, useState } from "react"
+import { useFetch } from "./apiFetch"
+import Button from "./Button"
+import { Pipeline } from "./EditImage"
+import Editor from "./Editor"
+import Login from "./Login"
+import { Context } from "./Store"
 import Upload from "./Upload"
 import UploadTheme from "./UploadTheme"
-import Editor from "./Editor"
-import apiFetch from "./apiFetch"
 import VideoList from "./VideoList"
 
-function App() {
-    const [images, setImages] = useState<any[] | null>(null)
-    const [res, setRes] = useState(null)
-    const [dirty, setDirty] = useState(false)
+export interface FileKey {
+    file: File
+    key: string
+}
 
-    const loadData = ({ images, res }) => {
-        setRes(res)
-        setImages(Array.from(images))
-        setDirty(true)
-    }
+function App() {
+    const apiFetch = useFetch()
+    const [state, dispatch] = useContext(Context)
+    const [images, setImages] = useState<FileKey[] | null>(null)
+    const [res, setRes] = useState<any[] | null>(null)
+    const [dirty, setDirty] = useState(false)
 
     useEffect(() => {
         const func = (e) => {
@@ -24,55 +29,95 @@ function App() {
         return () => window.removeEventListener("beforeunload", func)
     }, [dirty])
 
-    const finished = (blocks, images, settings) => {
-        const fd = new FormData()
+    if (!state.loggedIn) {
+        return (
+            <div className="app">
+                <Login onLogin={() => dispatch({ type: "LOGIN" })} />
+            </div>
+        )
+    }
 
-        // Append files to formdata
-        const info: any[] = []
-        let i = 0
-        for (const file of images) {
-            fd.append("files", file, i.toString())
-            info.push({ id: i.toString() })
-            i++
-        }
+    const loadData = ({ images, res }) => {
+        setRes(res)
+        setImages(images)
+        setDirty(true)
+    }
 
-        fd.append("info", JSON.stringify(info))
-        fd.append("pipeline", JSON.stringify(blocks))
-        fd.append("settings", JSON.stringify(settings))
-
-        return apiFetch("/make-vid", {
-            body: fd,
+    const finished = (pipeline: Pipeline[], settings) => {
+        return apiFetch("/v2/render", {
+            body: JSON.stringify({ pipeline, settings }),
             method: "POST",
+            headers: {
+                "content-type": "application/json",
+            },
         }).then((d) => d.json())
     }
 
+    const logout = () => {
+        apiFetch("/logout", {
+            method: "POST",
+        }).then(() => {
+            dispatch({ type: "LOGOUT" })
+        })
+    }
+
     return (
-        <div className="app">
-            {images ? (
-                <Editor res={res} images={images} onFinish={finished} />
-            ) : (
-                <div style={{ display: "flex" }}>
-                    <div style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}>
-                        <div className="card">
-                            <h3>Upload memes (png/jpg/gif)</h3>
-                            <Upload setData={loadData} />
-                        </div>
-                        <div className="card">
-                            <h3>
-                                Upload intro/outro/transition/song <br /> (for
-                                creating theme later)
-                            </h3>
-                            <UploadTheme />
-                        </div>
-                    </div>
+        <div>
+            <div className="app">
+                {images && res ? (
+                    <Editor res={res} images={images} onFinish={finished} />
+                ) : (
                     <div
-                        className="card"
-                        style={{ flexGrow: 1, flexBasis: 1, minWidth: 300 }}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                        }}
                     >
-                        <VideoList />
+                        <div style={{ display: "flex" }}>
+                            <div
+                                style={{
+                                    flexGrow: 1,
+                                    flexBasis: 1,
+                                    minWidth: 300,
+                                }}
+                            >
+                                <div className="card">
+                                    <h3>Upload memes</h3>
+                                    <p>Allowed formats: .png, .jpg, .gif</p>
+                                    <Upload setData={loadData} />
+                                </div>
+                                <div className="card">
+                                    <h3>
+                                        Upload intro/outro/transition/song
+                                        <br /> (for creating theme later)
+                                    </h3>
+                                    <UploadTheme />
+                                </div>
+                            </div>
+                            <div
+                                className="card"
+                                style={{
+                                    flexGrow: 1,
+                                    flexBasis: 1,
+                                    minWidth: 300,
+                                }}
+                            >
+                                <VideoList />
+                            </div>
+                        </div>
+                        <div style={{ width: 720 }}>
+                            <Button onClick={logout}>Log out</Button>
+                            <div style={{ paddingTop: "2rem" }}>
+                                Contact:{" "}
+                                <a href="mailto:emil@tentium.se">
+                                    emil@tentium.se
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }

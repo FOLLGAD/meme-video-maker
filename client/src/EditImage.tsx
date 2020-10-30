@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import { shortestPause, standardPause } from "./constants"
+import { LineBlock } from "./Editor"
 import Pipeline from "./Pipeline"
 
 // Gets the mouse click position within the canvas
@@ -24,19 +25,83 @@ const isInRect = (rect, x, y) =>
     y >= rect.y &&
     y <= rect.y + rect.height
 
+interface Rec {
+    x: number
+    y: number
+    height: number
+    width: number
+}
+
+interface Read {
+    rect: Rec[]
+    text: string
+    line?: number
+}
+
+interface BaseStage {
+    type: string
+}
+
+export interface ReadStage extends BaseStage {
+    type: "read"
+    added: any[]
+    joinNext?: boolean
+    reads: Read[]
+    rect: Rec[]
+    reveal: boolean
+    blockuntil: boolean
+}
+export interface PauseStage extends BaseStage {
+    type: "pause"
+    secs: number
+}
+export interface RevealStage extends BaseStage {
+    type: "reveal"
+    rect: Rec
+}
+export interface GifStage extends BaseStage {
+    type: "gif"
+    times: number
+}
+export interface DivStage extends BaseStage {
+    type: "div"
+}
+
+export type RawStage =
+    | ReadStage
+    | PauseStage
+    | RevealStage
+    | GifStage
+    | DivStage
+
+export type Stage = RawStage & {
+    id: number
+    _index: number
+}
+
+export type ImageSettings = {
+    showFirst: false
+}
+
+export type Pipeline = {
+    pipeline: Stage[]
+    settings: any
+    image: string
+}
+
 export default function FileImage({
     src,
-    blocks,
+    blocks: lineBlocks,
     settings,
     setSettings,
     pipeline,
     setPipeline,
 }: {
     src: File
-    blocks: any[]
+    blocks: LineBlock[]
     settings: any
     setSettings: any
-    pipeline: any[]
+    pipeline: Stage[]
     setPipeline: any
 }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -123,7 +188,7 @@ export default function FileImage({
         })
 
         // Draw reading blocks
-        blocks.forEach(({ rect: { x, y, width, height } }, i) => {
+        lineBlocks.forEach(({ rect: { x, y, width, height } }, i) => {
             ctx.strokeStyle = indexIsEnabled(i)
                 ? "lightgreen"
                 : indexIsAdded(i)
@@ -146,7 +211,7 @@ export default function FileImage({
         setMouseDownAt([mouseX, mouseY])
     }
 
-    const addStage = (stage) => {
+    const addStage = (stage: RawStage & { _index?: null | number }) => {
         const newStage = { ...stage, id: counter++ }
         if (stage.type === "reveal")
             return setPipeline([
@@ -165,7 +230,7 @@ export default function FileImage({
         else return setPipeline([...pipeline, newStage, { type: "div" }])
     }
 
-    const addStages = (stages: any[]) =>
+    const addStages = (stages: RawStage[]) =>
         setPipeline([
             ...pipeline,
             ...stages.map((stage) => ({ ...stage, id: counter++ })),
@@ -198,6 +263,7 @@ export default function FileImage({
     document.addEventListener("keyup", keyHandler)
 
     const onCanvasMouseUp = (event) => {
+        // Handle mouse click
         const canv = canvasRef.current
         if (!canv) return
 
@@ -227,33 +293,35 @@ export default function FileImage({
             return
 
         if (Math.abs(mouseX - fromX) > 10 && Math.abs(mouseY - fromY) > 10) {
-            // Add a reveal rect
-            let arr: { type: string; [key: string]: any }[] = []
+            // Mouse was dragged
+            // add a reveal rect
+            let arr: RawStage[] = []
 
             arr.push({ type: "reveal", rect })
             arr.push({ type: "div" })
 
             if (shiftDown) {
-                const rs = blocks
-                    .map((a, i) => [a, i])
-                    .filter(([r, _]) => rectContainsRect(rect, r.rect))
-                    .filter(([_, i]) => !indexIsEnabled(i))
-
-                rs.forEach(([block, i]) => {
-                    arr.push(
-                        {
-                            type: "read",
-                            _index: i,
-                            text: block.text.toLowerCase(),
-                            rect: [block.rect],
-                            blockuntil: false,
-                            reveal: false,
-                            added: [],
-                        },
-                        { type: "pause", secs: 0.5 },
-                        { type: "div" }
-                    )
-                })
+                // const rs = lineBlocks
+                //     .map((a, i): [LineBlock, number] => [a, i])
+                //     .filter(([r, _]) => rectContainsRect(rect, r.rect))
+                //     .filter(([_, i]) => !indexIsEnabled(i))
+                // rs.forEach(([lineBlock, i]) => {
+                //     lineBlock.blocks.forEach((block) => {
+                //         arr.push(
+                //             {
+                //                 type: "read",
+                //                 _index: i,
+                //                 text: block.text.toLowerCase(),
+                //                 rect: [block.rect],
+                //                 blockuntil: false,
+                //                 reveal: false,
+                //                 added: [],
+                //             },
+                //             { type: "pause", secs: 0.5 },
+                //             { type: "div" }
+                //         )
+                //     })
+                // })
             } else {
                 arr.push({ type: "pause", secs: 0.0 })
                 arr.push({ type: "div" })
@@ -262,48 +330,65 @@ export default function FileImage({
             return addStages(arr)
         }
 
-        const found = blocks.findIndex(({ rect }) =>
+        const clickedBlock = lineBlocks.findIndex(({ rect }) =>
             isInRect(rect, mouseX, mouseY)
         )
 
-        if (found !== -1) {
-            if (indexIsEnabled(found)) {
-                removeStage(pipeline.find((s) => s._index === found).id)
+        if (clickedBlock !== -1) {
+            // you clicked on something
+            if (indexIsEnabled(clickedBlock)) {
+                let block = pipeline.find((s) => s._index === clickedBlock)
+                if (block) removeStage(block.id)
             } else if (shiftDown) {
-                // If shift is down, look for the last TTS and append the clicked text to it.
-                const revInd = pipeline
-                    .slice()
-                    .reverse()
-                    .findIndex((s) => s.type === "read")
+                // Add blocks
+                let block = lineBlocks[clickedBlock]
 
-                const ind = pipeline.length - 1 - revInd
-                if (revInd !== -1 && !pipeline[ind].added.includes(found)) {
-                    const newText =
-                        pipeline[ind].text +
-                        " " +
-                        blocks[found].text.toLowerCase()
-                    updateStage(ind, {
-                        ...pipeline[ind],
-                        text: newText,
-                        rect: [...pipeline[ind].rect, blocks[found].rect],
-                        added: [...pipeline[ind].added, found],
-                    })
+                let _foundIndexReversed = pipeline
+                    .slice() // .reverse() is in-place, so make a copy bruv
+                    .reverse()
+                    .findIndex((p) => p.type === "read")
+
+                if (_foundIndexReversed !== -1) {
+                    let lastTextBlock =
+                        pipeline.length - 1 - _foundIndexReversed
+                    let elem = pipeline[lastTextBlock] as ReadStage // Since this is definitely a `type: "read"`
+
+                    elem.rect.push(block.rect)
+                    elem.reads.push(
+                        ...block.blocks.map((block) => ({
+                            ...block,
+                            text: block.text.toLowerCase(),
+                            rect: block.rect,
+                            line:
+                                (elem.reads[elem.reads.length - 1].line || 0) +
+                                1,
+                        }))
+                    )
+
+                    updateStage(lastTextBlock, elem)
                 }
             } else {
-                addStage({
+                const newStage: Stage = {
                     type: "read",
-                    _index: found,
-                    text: blocks[found].text.toLowerCase(),
-                    rect: [blocks[found].rect],
+                    _index: clickedBlock,
+                    id: counter++,
+                    reads: lineBlocks[clickedBlock].blocks.map((block) => ({
+                        ...block,
+                        text: block.text.toLowerCase(),
+                    })),
+                    rect: [lineBlocks[clickedBlock].rect],
                     blockuntil: false,
                     reveal: true,
                     added: [],
-                })
+                }
+                addStages([newStage, { type: "div" }])
             }
         }
 
         const rectIndex = pipeline.findIndex(
-            (val) => val.rect && isInRect(val.rect, mouseX, mouseY)
+            (val) =>
+                (val.type === "read" || val.type === "reveal") &&
+                isInRect(val.rect, mouseX, mouseY)
         )
         if (rectIndex !== -1) {
             setHighlight(rectIndex)
@@ -315,7 +400,7 @@ export default function FileImage({
             drawImage(src).then(() => {
                 drawOverlay()
             })
-    }, [blocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
+    }, [lineBlocks, src, ctx, pipeline, highlight, drawImage, drawOverlay])
 
     const divRef = useRef<HTMLDivElement>(null)
 
@@ -374,7 +459,7 @@ export default function FileImage({
                 onClick={() =>
                     addStage({
                         type: "read",
-                        text: "",
+                        reads: [{ rect: [], text: "" }],
                         blockuntil: false,
                         reveal: false,
                         _index: null,

@@ -1,8 +1,19 @@
 import React, { useMemo } from "react"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd"
+import { Stage } from "./EditImage"
 
-export default function ({ setPipeline, pipeline, highlight, removeStage }) {
-    const renderStage = (pipe) => {
+export default function ({
+    setPipeline,
+    pipeline,
+    highlight,
+    removeStage,
+}: {
+    setPipeline: (pipeline: any[]) => void
+    pipeline: Stage[]
+    highlight: number | null
+    removeStage: (id: number) => void
+}) {
+    const renderStage = (pipe: Stage[]) => {
         return (
             <div
                 className="pipeline-stage"
@@ -41,26 +52,34 @@ export default function ({ setPipeline, pipeline, highlight, removeStage }) {
             </div>
         )
     }
-    const renderInnerStage = (stage) => {
+    const renderInnerStage = (stage: Stage) => {
         switch (stage.type) {
             case "read":
                 return (
                     <div>
-                        <textarea
-                            style={{
-                                width: "100%",
-                                fontSize: 15,
-                                minWidth: 300,
-                            }}
-                            rows={3}
-                            onChange={(e) =>
-                                updateStage(stage.id, {
-                                    ...stage,
-                                    text: e.target.value,
-                                })
-                            }
-                            value={stage.text}
-                        ></textarea>
+                        {stage.reads.map((read, readIndex) => (
+                            <textarea
+                                // key={readIndex} // TODO: find a better key, perhaps this could lead to bugs?
+                                style={{
+                                    width: "100%",
+                                    fontSize: 15,
+                                    minWidth: 300,
+                                }}
+                                rows={3}
+                                onChange={(e) => {
+                                    // Update the correct reads[].text and update the pipeline
+                                    const newStage = {
+                                        ...stage,
+                                        reads: stage.reads.slice(),
+                                    }
+                                    newStage.reads[readIndex].text =
+                                        e.target.value
+                                    // Update the stage
+                                    updateStage(stage.id, newStage)
+                                }}
+                                value={read.text}
+                            ></textarea>
+                        ))}
                         {stage.rect.length > 0 && (
                             <div>
                                 <label>
@@ -153,8 +172,8 @@ export default function ({ setPipeline, pipeline, highlight, removeStage }) {
 
     // Splits the pipeline up in substages, where every type: "div" becomes a separator
     const chunkedPipeline = useMemo(() => {
-        let arr: any[] = []
-        let work: any[] = []
+        let arr: Stage[][] = []
+        let work: Stage[] = []
         pipeline.forEach((pipe) => {
             if (pipe.type === "div") {
                 arr.push(work)

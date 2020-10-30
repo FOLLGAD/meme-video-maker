@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react"
-import apiFetch from "./apiFetch"
+import { useFetch } from "./apiFetch"
 
 export default function Form() {
+    const apiFetch = useFetch()
     const filesInp = useRef<HTMLInputElement>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)

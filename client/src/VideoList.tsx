@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from "react"
-import apiFetch, { apiUrl } from "./apiFetch"
+import { apiUrl, useFetch } from "./apiFetch"
+import { removeNamespace } from "./utils"
 
 export default function () {
-    const [videos, setVids] = useState<any[]>([])
+    const apiFetch = useFetch()
+
+    const [data, setData] = useState<{ data: any[]; inProgress: any[] } | null>(
+        null
+    )
 
     const getVids = () => {
         apiFetch("/vids")
             .then((d) => d.json())
-            .then((vids) => {
-                setVids(vids.data)
+            .then((data) => {
+                setData(data)
             })
     }
 
@@ -17,20 +22,27 @@ export default function () {
     return (
         <div className="videolist-container">
             <h2 style={{ marginBottom: 10 }}>Last videos</h2>
+            {data &&
+                (data.inProgress.length > 0 ? (
+                    <p>{data.inProgress.length} videos in progress</p>
+                ) : (
+                    <p>No videos in progress</p>
+                ))}
             <div className="videolist">
-                {videos
-                    ? videos.map((vid) => {
+                {data
+                    ? data.data.map((vid) => {
                           let d = vid.LastModified || new Date()
+                          let key = removeNamespace(vid.Key)
                           return (
                               <a
-                                  key={vid.Key}
-                                  download={true}
+                                  key={key}
+                                  download
                                   target="_blank"
                                   rel="noreferrer noopener"
-                                  href={`${apiUrl}/vids/${vid.Key}`}
+                                  href={`${apiUrl}/vids/${key}`}
                               >
-                                  <div key={vid.Key} className="video">
-                                      {vid.Key}
+                                  <div key={key} className="video">
+                                      {key}
                                       <br />
                                       {d.toLocaleString()}
                                   </div>
