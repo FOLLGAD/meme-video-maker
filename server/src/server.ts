@@ -657,18 +657,14 @@ router
     })
     .delete("/themes/:themeId", bodyParser, async (ctx) => {
         try {
-            await new Promise((res, rej) =>
-                dynamodb.deleteItem(
-                    {
-                        Key: {
-                            themeId: { S: ctx.params.themeId },
-                            email: { S: ctx.state.user.email },
-                        },
-                        TableName: dbThemeName,
+            await dynamodb
+                .deleteItem({
+                    Key: {
+                        themeId: { S: ctx.params.themeId },
                     },
-                    (err, data) => (err ? rej(err) : res(data))
-                )
-            )
+                    TableName: dbThemeName,
+                })
+                .promise()
             ctx.body = { success: true }
         } catch (error) {
             console.error(error)
