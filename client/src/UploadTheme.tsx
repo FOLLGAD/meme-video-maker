@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react"
 import { useFetch } from "./apiFetch"
 
-export default function Form() {
+export default function Form({ onUploaded }: { onUploaded: any }) {
     const apiFetch = useFetch()
     const filesInp = useRef<HTMLInputElement>(null)
     const [loading, setLoading] = useState(false)
@@ -27,7 +27,10 @@ export default function Form() {
             setLoading(false)
             if (res.ok) {
                 setError(null)
+
                 fi.value = ""
+
+                if (onUploaded) onUploaded()
             } else {
                 setError("Something went wrong. Try again with another format.")
             }

@@ -3,10 +3,10 @@ import { useFetch } from "./apiFetch"
 import Button from "./Button"
 import { Pipeline } from "./EditImage"
 import Editor from "./Editor"
+import FileList from "./FileList"
 import Login from "./Login"
 import { Context } from "./Store"
 import Upload from "./Upload"
-import UploadTheme from "./UploadTheme"
 import VideoList from "./VideoList"
 
 export interface FileKey {
@@ -92,7 +92,7 @@ function App() {
                                         Upload intro/outro/transition/song
                                         <br /> (for creating theme later)
                                     </h3>
-                                    <UploadTheme />
+                                    <FileList />
                                 </div>
                             </div>
                             <div

@@ -437,53 +437,6 @@ router
             success: true,
         }
     })
-    // TODO: This can be replaced with a lambda that
-    // automatically normalizes S3 files and puts them in a "finished" folder
-    .post("/upload-file", koaLargeBody, async (ctx) => {
-        const { files } = ctx.request
-        if (!files) throw new Error("Please send a file")
-        const { path, name } = files.file
-
-        try {
-            const ext = name.substr(-4)
-            const f = await file({ postfix: ext })
-
-            let newPath = f.path
-            if (ext === ".mp3") {
-                // Do nothing, audio don't need preprocessing (??? citation needed)
-                // Also, ffmpeg needs "libmp3lame" support for mp3 output for some darn reason
-                newPath = path
-            } else {
-                await normalizeVideo(path, newPath)
-            }
-
-            await new Promise((res, rej) =>
-                s3.upload(
-                    {
-                        Bucket: FilesBucket,
-                        Body: createReadStream(newPath),
-                        Key: namespaceKey(ctx.state.user.email, name),
-                    },
-                    (err, data) => (err ? rej(err) : res(data))
-                )
-            )
-            f.cleanup()
-
-            console.log("Uploaded new file with name", name)
-
-            ctx.body = {
-                success: true,
-            }
-        } catch (err) {
-            console.error(err)
-
-            ctx.status = 400
-
-            ctx.body = {
-                success: false,
-            }
-        }
-    })
     .get("/vids/:key", async (ctx) => {
         const data: any = await new Promise((res, rej) => {
             s3.getObject(
@@ -545,6 +498,84 @@ router
         ctx.body = {
             videos: keys.filter((f: string) => f.slice(-4) === ".mp4"),
             songs: keys.filter((f: string) => f.slice(-4) === ".mp3"),
+        }
+    })
+    .get("/files/:file", async (ctx) => {
+        const data: any = await new Promise((res, rej) => {
+            s3.getObject(
+                {
+                    Bucket: FilesBucket,
+                    Key: namespaceKey(ctx.state.user.email, ctx.params.file),
+                },
+                (err, data) => {
+                    err ? rej(err) : res(data)
+                }
+            )
+        })
+
+        // Write buffer to body
+        ctx.body = data.Body
+    })
+    // TODO: This can be replaced with a lambda that
+    // automatically normalizes S3 files and puts them in a "finished" folder
+    .post("/upload-file", koaLargeBody, async (ctx) => {
+        const { files } = ctx.request
+        if (!files) throw new Error("Please send a file")
+        const { path, name } = files.file
+
+        try {
+            const ext = name.substr(-4)
+            const f = await file({ postfix: ext })
+
+            let newPath = f.path
+            if (ext === ".mp3") {
+                // Do nothing, audio don't need preprocessing (??? citation needed)
+                // Also, ffmpeg needs "libmp3lame" support for mp3 output for some darn reason
+                newPath = path
+            } else {
+                await normalizeVideo(path, newPath)
+            }
+
+            await new Promise((res, rej) =>
+                s3.upload(
+                    {
+                        Bucket: FilesBucket,
+                        Body: createReadStream(newPath),
+                        Key: namespaceKey(ctx.state.user.email, name),
+                    },
+                    (err, data) => (err ? rej(err) : res(data))
+                )
+            )
+            f.cleanup()
+
+            console.log("Uploaded new file with name", name)
+
+            ctx.body = {
+                success: true,
+            }
+        } catch (err) {
+            console.error(err)
+
+            ctx.status = 400
+
+            ctx.body = {
+                success: false,
+            }
+        }
+    })
+    .delete("/files/:file", async (ctx) => {
+        try {
+            await s3
+                .deleteObject({
+                    Key: namespaceKey(ctx.state.user.email, ctx.params.file),
+                    Bucket: FilesBucket,
+                })
+                .promise()
+            ctx.body = { success: true }
+        } catch (error) {
+            console.error(error)
+            ctx.status = 404
+            ctx.body = { success: false }
         }
     })
     .get("/themes", async (ctx) => {
@@ -657,13 +688,13 @@ app.use(async (ctx, next) => {
     }
 })
 
-app.use((ctx, next) => {
+app.use(async (ctx, next) => {
     // Logging
+    await next()
     let user = ctx.state.user ? ctx.state.user.email : "unauthed"
     console.log(
         `${ctx.method} ${ctx.url} - ${new Date().toISOString()} ${user}`
     )
-    return next()
 })
 
 app.use(publicRouter.routes()).use(publicRouter.allowedMethods())
