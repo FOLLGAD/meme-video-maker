@@ -60,12 +60,12 @@ const koaLargeBody = koaMultiBody({
 
 const bodyParser = koaBodyParser()
 
-interface CustomKoaState {
-    user?: { email: string }
+interface AuthedKoaState {
+    user: { email: string }
 }
 
-const app = new Koa<CustomKoaState, {}>()
-const router = new Router()
+const app = new Koa()
+const router = new Router<AuthedKoaState, {}>()
 
 app.use(cors({ credentials: true }))
 
@@ -271,8 +271,8 @@ const publicRouter = new Router()
 
 const authenticate = async (
     ctx: Koa.ParameterizedContext<
-        CustomKoaState,
-        Router.IRouterParamContext<CustomKoaState, {}>
+        any,
+        Router.IRouterParamContext<AuthedKoaState, any>
     >,
     next: any
 ) => {
