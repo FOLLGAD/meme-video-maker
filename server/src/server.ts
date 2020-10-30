@@ -75,6 +75,7 @@ const queue: (() => Promise<void>)[] = []
 let currentlyRunning = false
 
 async function addToQueue(fn: () => Promise<void>) {
+    console.log("Added to queue")
     queue.push(fn)
     if (!currentlyRunning) {
         currentlyRunning = true
@@ -656,7 +657,14 @@ app.use(async (ctx, next) => {
     }
 })
 
+app.use((ctx, next) => {
+    // Logging
+    console.log(`${ctx.method} ${ctx.url} - ${new Date().toISOString()}`)
+    return next()
+})
+
 app.use(publicRouter.routes()).use(publicRouter.allowedMethods())
+
 app.use(router.routes()).use(router.allowedMethods())
 
 app.listen(7000, () => console.log("Listening right now on port 7000"))
