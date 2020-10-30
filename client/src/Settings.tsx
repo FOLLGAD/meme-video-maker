@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import Modal from "react-modal"
 import { useFetch } from "./apiFetch"
+import { removeNamespace } from "./utils"
 
 Modal.setAppElement("#root")
 
@@ -125,7 +126,7 @@ export default function ({
                             <option value="">None</option>
                             {files.videos.map((file) => (
                                 <option key={file} value={file}>
-                                    {file}
+                                    {removeNamespace(file)}
                                 </option>
                             ))}
                         </select>
@@ -141,7 +142,7 @@ export default function ({
                             <option value="">None</option>
                             {files.videos.map((file) => (
                                 <option key={file} value={file}>
-                                    {file}
+                                    {removeNamespace(file)}
                                 </option>
                             ))}
                         </select>
@@ -157,7 +158,7 @@ export default function ({
                             <option value="">None</option>
                             {files.videos.map((file) => (
                                 <option key={file} value={file}>
-                                    {file}
+                                    {removeNamespace(file)}
                                 </option>
                             ))}
                         </select>
@@ -173,7 +174,7 @@ export default function ({
                             <option value="">None</option>
                             {files.songs.map((file) => (
                                 <option key={file} value={file}>
-                                    {file}
+                                    {removeNamespace(file)}
                                 </option>
                             ))}
                         </select>
