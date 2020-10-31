@@ -3,10 +3,12 @@ import * as cors from "@koa/cors"
 import * as AWS from "aws-sdk"
 import { ScanOutput } from "aws-sdk/clients/dynamodb"
 import { ListObjectsOutput } from "aws-sdk/clients/s3"
+import * as bcrypt from "bcrypt"
 import { fork } from "child_process"
 // Load env variables
 import { config } from "dotenv"
 import { createReadStream, existsSync, writeFileSync } from "fs"
+import * as jwt from "jsonwebtoken"
 import * as Koa from "koa"
 // setup multipart upload for koa
 import * as koaMultiBody from "koa-body"
@@ -15,12 +17,10 @@ import * as Router from "koa-router"
 import { join } from "path"
 import { file, FileResult } from "tmp-promise"
 import { v4 as uuidv4 } from "uuid"
-import { makeIntoS3Url } from "./utils"
+import { signedUrlIntoId } from "./utils"
 import { normalizeVideo, Pipeline } from "./video"
-import { readImages, readRemoteImages } from "./vision"
+import { readRemoteImages } from "./vision"
 
-import * as jwt from "jsonwebtoken"
-import * as bcrypt from "bcrypt"
 const saltRounds = 10
 
 config()
@@ -300,6 +300,30 @@ const unNamespaceKey = (key: string): string => {
 
 const inProgress: { email: string; name: string }[] = []
 
+const bucketname = "carp-uploads"
+const { Storage } = require("@google-cloud/storage")
+
+// Creates a client
+const storage = new Storage()
+
+async function generateGoogleSignedUrl(filename: string) {
+    // These options will allow temporary read access to the file
+    const options = {
+        version: "v4",
+        action: "write",
+        expires: Date.now() + 30 * 60 * 1000, // 30 minutes
+        // contentType: "image/png",
+    }
+
+    // Get a v4 signed URL for reading the file
+    const [url] = await storage
+        .bucket(bucketname)
+        .file(filename)
+        .getSignedUrl(options)
+
+    return url
+}
+
 router
     // Require auth for everyone of these routes
     .use(authenticate)
@@ -368,21 +392,9 @@ router
         let datas: AWS.S3.PresignedPost[] = []
 
         for (let i = 0; i < amount; i++) {
-            const s3Params: AWS.S3.PresignedPost.Params = {
-                Bucket: UploadsBucket,
-                Fields: {
-                    key: namespaceKey(ctx.state.user.email, uuidv4()), // Unique file name
-                },
-                Conditions: [
-                    ["content-length-range", 0, 100000000],
-                    ["starts-with", "$Content-Type", "image/"],
-                    // ["eq", "$x-amz-meta-user-id", userId],
-                ],
-                // ContentType: fileType
-            }
+            const url = await generateGoogleSignedUrl(uuidv4())
 
-            const data = s3.createPresignedPost(s3Params)
-            datas.push(data)
+            datas.push(url)
         }
 
         ctx.body = datas
@@ -390,7 +402,9 @@ router
     .post("/v2/vision", bodyParser, async (ctx) => {
         const { body } = ctx.request
 
-        const imageUrls = body.map(makeIntoS3Url)
+        console.log(body)
+        const imageUrls = body.map(signedUrlIntoId)
+        console.log(imageUrls)
 
         const data = await readRemoteImages(imageUrls)
 

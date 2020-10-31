@@ -7,6 +7,11 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const [progress, setProgress] = useState<{
+        uploaded: boolean
+        progress: number
+    } | null>(null)
+
     const submit = async (
         event: React.MouseEvent<HTMLButtonElement, MouseEvent>
     ) => {
@@ -19,39 +24,36 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
         setLoading(true)
         setError(null)
 
-        const urls: {
-            fields: { [key: string]: string }
-            url: string
-        }[] = await apiFetch(`/v2/get-signed-urls?amount=${files.length}`, {
-            method: "POST",
-        }).then((p) => p.json())
+        const urls: string[] = await apiFetch(
+            `/v2/get-signed-urls?amount=${files.length}`,
+            {
+                method: "POST",
+            }
+        ).then((p) => p.json())
 
         // https://blog.rocketinsights.com/uploading-images-to-s3-via-the-browser/
 
         const images: { file: File; key: string }[] = []
 
         for (let i = 0; i < urls.length; i++) {
-            let fd = new FormData()
+            setProgress({ uploaded: false, progress: i })
+            const key = urls[i]
 
-            const { key } = urls[i].fields
+            console.log(files[i].type)
 
-            fd.append("Content-Type", files[i].type)
-
-            Object.entries(urls[i].fields).forEach(([k, v]) => {
-                fd.append(k, v)
-            })
-
-            fd.append("file", files[i])
-
-            const res = await fetch(urls[i].url, {
-                body: fd,
-                method: "POST",
+            const res = await fetch(urls[i], {
+                body: files[i],
+                method: "PUT",
+                headers: {
+                    "content-type": files[i].type,
+                },
             })
             if (!res.ok) {
                 console.error(i, "FAILED!")
             }
             images.push({ file: files[i], key })
         }
+        setProgress({ uploaded: true, progress: 0 })
 
         // Append files to formdata
 
@@ -70,11 +72,13 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
             })
             .then((res) => {
                 setLoading(false)
+                setProgress(null)
                 setData({ res: res, images })
             })
             .catch((d) => {
                 setLoading(false)
                 console.log(d)
+                setProgress(null)
                 setError(d.message || d.error)
             })
     }
@@ -109,6 +113,13 @@ export default function Form({ setData }: { setData: (data: any) => void }) {
                     <button type="submit" onClick={submit} disabled={loading}>
                         {loading ? "Loading..." : "Go"}
                     </button>
+                    {progress && (
+                        <span style={{ marginLeft: 10 }}>
+                            {progress.uploaded
+                                ? "Loading images..."
+                                : `Uploading image ${progress.progress + 1}...`}
+                        </span>
+                    )}
                 </div>
             </form>
         </div>

@@ -11,7 +11,7 @@ import {
     setGracefulCleanup,
 } from "tmp-promise"
 import { synthSpeech } from "./synth"
-import { makeIntoS3Url } from "./utils"
+import { makeIntoGCSUrl, signedUrlIntoId } from "./utils"
 
 const dir = dirSync({ unsafeCleanup: true })
 
@@ -22,7 +22,9 @@ process.on(
     "message",
     async ([pipes, videosettings]: [Pipeline[], VideoSettings]) => {
         try {
+            console.time("making video")
             const vidPath = await makeVids(pipes, videosettings)
+            console.timeEnd("making video")
             process.send!({ isError: false, data: vidPath, file: vidPath })
         } catch (error) {
             process.send!({ isError: true, data: error })
@@ -282,8 +284,7 @@ async function makeImageThing(
         return null
     }
 
-    const image = makeIntoS3Url(pipelineObj.image)
-    console.log("IMAGE", image)
+    const image = makeIntoGCSUrl(signedUrlIntoId(pipelineObj.image))
 
     const loadedImage = await Canvas.loadImage(image)
     const { width, height } = loadedImage
@@ -638,16 +639,12 @@ async function makeImageThing(
         console.timeEnd("render_stage")
     }
 
-    console.log(vids)
-
     if (vids.length === 0) {
         return null
     }
 
     const out = await file({ dir: dir.path, postfix: ".mp4" })
     await simpleConcat(vids, out.path)
-
-    console.log("vid concat", out.path)
 
     return out.path
 }
@@ -678,16 +675,6 @@ function getResString(width = 1920, height = 1080) {
     return width + "x" + height
 }
 
-function tsConcat(videoPaths: string[], outPath: string): Promise<void> {
-    return new Promise((res, rej) => {
-        ffmpeg("concat:" + videoPaths.join("|"))
-            .audioCodec("copy")
-            .videoCodec("copy")
-            .on("end", res)
-            .save(outPath)
-    })
-}
-
 function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
     return new Promise((res, rej) => {
         getConcat(videoPaths)
@@ -708,6 +695,7 @@ function simpleConcat(videoPaths: string[], outPath: string): Promise<void> {
                 "-r:a 48000",
                 "-ar 48000",
                 "-movflags faststart",
+                "-max_muxing_queue_size 1024",
             ])
             .on("end", () => {
                 res()
