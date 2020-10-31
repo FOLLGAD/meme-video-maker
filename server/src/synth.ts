@@ -150,7 +150,7 @@ export async function synthDaniel(
     let xmlWithBreaks: string[] = []
 
     xmlEscapedAndDashed.forEach((string, i) => {
-        let weakBreak = `<break strength="weak" />`
+        let weakBreak = `<break strength="x-weak" />`
         xmlWithBreaks.push(
             string
                 .replace(/\b&quot;(\s|$)/g, weakBreak + "$&")

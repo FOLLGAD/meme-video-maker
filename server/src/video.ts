@@ -287,19 +287,19 @@ async function makeImageThing(
     const image = makeIntoGCSUrl(signedUrlIntoId(pipelineObj.image))
 
     const loadedImage = await Canvas.loadImage(image)
-    const { width, height } = loadedImage
-    const imageCanvas = Canvas.createCanvas(width, height)
+    const { width: imageWidth, height: imageHeight } = loadedImage
+    const imageCanvas = Canvas.createCanvas(imageWidth, imageHeight)
     const imageCanvCtx = imageCanvas.getContext("2d")
 
     // Create the canvas that will cover the image
-    const blockingCanvas = Canvas.createCanvas(width, height)
+    const blockingCanvas = Canvas.createCanvas(imageWidth, imageHeight)
     // ...and fill it black
     const blockingCtx = blockingCanvas.getContext("2d")
     blockingCtx.fillStyle = blockColor
-    blockingCtx.fillRect(0, 0, width, height)
+    blockingCtx.fillRect(0, 0, imageWidth, imageHeight)
 
     // Init: fill the canvas with the blocked one
-    imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+    imageCanvCtx.drawImage(blockingCanvas, 0, 0, imageWidth, imageHeight)
 
     const vids: string[] = []
 
@@ -332,24 +332,43 @@ async function makeImageThing(
         // }
 
         // Replace the canvas with the image
-        imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+        imageCanvCtx.drawImage(loadedImage, 0, 0, imageWidth, imageHeight)
         // Do not draw if on last stage and stage isn't read
         if (i < pipeline.length - 1 || stage.type !== "read") {
             // Draw blockage
-            imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+            imageCanvCtx.drawImage(
+                blockingCanvas,
+                0,
+                0,
+                imageWidth,
+                imageHeight
+            )
         }
 
-        // For every "blockuntil" read block that comes after the current stage,
-        // block it!
         imageCanvCtx.fillStyle = blockColor
-        pipeline
-            .slice(i + 1) // all stages after the current one...
-            .filter((s): s is ReadStage => s.type === "read" && s.blockuntil) // that are read and blockuntil...
-            .forEach(({ rect }) => {
-                rect.forEach(
-                    (r) => imageCanvCtx.fillRect(r.x, r.y, r.width, r.height) // ...fill up all areas covered by the read
-                )
-            })
+        const blockComingReads = () => {
+            // For every "blockuntil" read block that comes after the current stage,
+            // block it!
+            imageCanvCtx.fillStyle = blockColor
+            pipeline
+                .slice(i + 1) // all stages after the current one...
+                .filter(
+                    (s): s is ReadStage => s.type === "read" && s.blockuntil
+                ) // that are read and blockuntil...
+                .forEach(({ reads }) => {
+                    reads.forEach((r) =>
+                        r.rect.forEach(
+                            (r) =>
+                                imageCanvCtx.fillRect(
+                                    r.x,
+                                    r.y,
+                                    r.width,
+                                    r.height
+                                ) // ...fill up all areas covered by the read
+                        )
+                    )
+                })
+        }
 
         if (stage.type === "read") {
             let speechDone = false,
@@ -371,27 +390,46 @@ async function makeImageThing(
 
                 // for every segment, do the thing
 
-                let isLastReadOnImage = true
+                let isLastReadOrRevealOnImage = true
                 for (let x = pipeline.length - 1; x > i; x--) {
-                    if (pipeline[x]?.type === "read") {
-                        isLastReadOnImage = false
+                    if (
+                        pipeline[x]?.type &&
+                        ["read", "reveal"].includes(pipeline[x].type)
+                    ) {
+                        isLastReadOrRevealOnImage = false
                         break
                     }
                 }
-                // console.log(realSegments)
 
                 const pngs: FileResult[] = []
                 let lastLine = stage.reads[stage.reads.length - 1]?.line || null
                 // console.log(stage.reads)
                 for (let i = 0; i < stage.reads.length; i++) {
                     const read = stage.reads[i]
-                    // Clear this read from the blocker
-                    read.rect.forEach((rect) => {
-                        blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
-                    })
 
-                    if (isLastReadOnImage && read.line === lastLine) {
-                        blockingCtx.clearRect(0, 0, width, height)
+                    if (stage.reveal) {
+                        // Clear this read from the blocker
+                        read.rect.forEach((rect) => {
+                            blockingCtx.clearRect(
+                                0,
+                                0,
+                                imageWidth,
+                                rect.y + rect.height
+                            )
+                        })
+                    } else {
+                        read.rect.forEach((rect) => {
+                            blockingCtx.clearRect(
+                                rect.x,
+                                rect.y,
+                                rect.width,
+                                rect.height
+                            )
+                        })
+                    }
+
+                    if (isLastReadOrRevealOnImage && read.line === lastLine) {
+                        blockingCtx.clearRect(0, 0, imageWidth, imageHeight)
                     } else {
                         // For all the coming reads on the same line, block them!
                         for (let q = i + 1; q < stage.reads.length; q++) {
@@ -411,12 +449,25 @@ async function makeImageThing(
                                     ) // ...fill up all areas covered by the read
                             )
                         }
+                        blockComingReads()
                     }
 
                     // draw the image on the canvas
-                    imageCanvCtx.drawImage(loadedImage, 0, 0, width, height)
+                    imageCanvCtx.drawImage(
+                        loadedImage,
+                        0,
+                        0,
+                        imageWidth,
+                        imageHeight
+                    )
                     // draw the blocker to the canvas
-                    imageCanvCtx.drawImage(blockingCanvas, 0, 0, width, height)
+                    imageCanvCtx.drawImage(
+                        blockingCanvas,
+                        0,
+                        0,
+                        imageWidth,
+                        imageHeight
+                    )
                     const pngf = await getSnapshot()
 
                     pngs.push(pngf)
@@ -513,6 +564,8 @@ async function makeImageThing(
                 // scene couldn't be rendered, so it won't be pushed to the video-list
             }
         } else if (stage.type === "pause") {
+            blockComingReads()
+
             const pauseTime = Math.min(Math.abs(Number(stage.secs)), 10)
             if (pauseTime === 0.0) continue
 
@@ -570,8 +623,6 @@ async function makeImageThing(
                         )
                         .on("end", () => res(f))
                 })
-
-                console.log(out.path)
 
                 vids.push(out.path)
             } catch (error) {
