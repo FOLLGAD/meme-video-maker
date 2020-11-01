@@ -21,7 +21,7 @@ interface BoundingPoly {
     vertices: [Vertex, Vertex, Vertex, Vertex]
 }
 
-const padding = 8
+const padding = 2
 
 const addPadding = (rect: Rect): Rect => ({
     height: rect.height + padding * 2,
