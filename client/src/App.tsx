@@ -5,6 +5,7 @@ import { Pipeline } from "./EditImage"
 import Editor from "./Editor"
 import FileList from "./FileList"
 import Login from "./Login"
+import Register from "./Register"
 import { Context } from "./Store"
 import Upload from "./Upload"
 import VideoList from "./VideoList"
@@ -118,6 +119,7 @@ function App() {
                     </div>
                 )}
             </div>
+            {/* <Register /> */}
         </div>
     )
 }

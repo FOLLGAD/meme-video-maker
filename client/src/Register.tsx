@@ -41,7 +41,7 @@ function Register({ onRegister }: { onRegister?: any }) {
                     value={password}
                     placeholder="Password"
                 />
-                <Button onClick={register} />
+                <Button onClick={register}>Register</Button>
             </form>
         </div>
     )
