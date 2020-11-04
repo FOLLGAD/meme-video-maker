@@ -2,7 +2,7 @@ import React, { useMemo } from "react"
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd"
 import { Stage } from "./EditImage"
 
-export default function ({
+export default function Pipeline({
     setPipeline,
     pipeline,
     highlight,
@@ -58,27 +58,44 @@ export default function ({
                 return (
                     <div>
                         {stage.reads.map((read, readIndex) => (
-                            <textarea
-                                // key={readIndex} // TODO: find a better key, perhaps this could lead to bugs?
-                                style={{
-                                    width: "100%",
-                                    fontSize: 15,
-                                    minWidth: 300,
-                                }}
-                                rows={3}
-                                onChange={(e) => {
-                                    // Update the correct reads[].text and update the pipeline
-                                    const newStage = {
-                                        ...stage,
-                                        reads: stage.reads.slice(),
-                                    }
-                                    newStage.reads[readIndex].text =
-                                        e.target.value
-                                    // Update the stage
-                                    updateStage(stage.id, newStage)
-                                }}
-                                value={read.text}
-                            ></textarea>
+                            <div style={{ display: "flex" }}>
+                                <textarea
+                                    // key={readIndex} // TODO: find a better key, perhaps this could lead to bugs?
+                                    style={{
+                                        width: "100%",
+                                        fontSize: 15,
+                                        minWidth: 300,
+                                    }}
+                                    rows={3}
+                                    onChange={(e) => {
+                                        // Update the correct reads[].text and update the pipeline
+                                        const newStage = {
+                                            ...stage,
+                                            reads: stage.reads.slice(),
+                                        }
+                                        newStage.reads[readIndex].text =
+                                            e.target.value
+                                        // Update the stage
+                                        updateStage(stage.id, newStage)
+                                    }}
+                                    value={read.text}
+                                ></textarea>
+                                <button
+                                    style={{
+                                        alignSelf: "center",
+                                    }}
+                                    onClick={(e) => {
+                                        const newStage = {
+                                            ...stage,
+                                            reads: stage.reads.slice(),
+                                        }
+                                        newStage.reads.splice(readIndex, 1)
+                                        updateStage(stage.id, newStage)
+                                    }}
+                                >
+                                    remove
+                                </button>
+                            </div>
                         ))}
                         {stage.rect.length > 0 && (
                             <div>

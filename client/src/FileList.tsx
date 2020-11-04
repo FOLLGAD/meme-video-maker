@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { apiUrl, useFetch } from "./apiFetch"
 import { removeNamespace } from "./utils"
 import UploadTheme from "./UploadTheme"
 
-export default function () {
+export default function FileList() {
     const apiFetch = useFetch()
 
     const [data, setData] = useState<{
@@ -11,13 +11,13 @@ export default function () {
         videos: string[]
     } | null>(null)
 
-    const getVids = () => {
+    const getVids = useCallback(() => {
         apiFetch("/files")
             .then((d) => d.json())
             .then((data) => {
                 setData(data)
             })
-    }
+    }, [apiFetch])
 
     const deleteFile = (key) => {
         apiFetch("/files/" + key, { method: "DELETE" }).then(() => {
@@ -25,7 +25,7 @@ export default function () {
         })
     }
 
-    useEffect(() => getVids(), [])
+    useEffect(() => getVids(), [getVids])
 
     return (
         <div className="videolist-container">

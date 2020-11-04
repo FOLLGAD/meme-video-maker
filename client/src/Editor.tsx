@@ -64,6 +64,7 @@ interface Word {
     text: string
     linebreak: string | false
     prepunctuation: boolean
+    punctuation: boolean
 }
 
 export interface Line {
@@ -106,10 +107,8 @@ const mapBlock = (block): LineBlock => {
                 rect: outerBoundingBox,
                 text: word,
                 prepunctuation: firstSym && stoppers.includes(firstSym.text),
-                linebreak:
-                    lastSym && stoppers.includes(lastSym.text)
-                        ? "PUNCTUATION"
-                        : linebreak,
+                punctuation: lastSym && stoppers.includes(lastSym.text),
+                linebreak: linebreak,
             }
         })
         let lines: Line[] = []
@@ -129,12 +128,13 @@ const mapBlock = (block): LineBlock => {
             line.push(word)
             if (
                 word.linebreak &&
-                ["EOL_SURE_SPACE", "LINE_BREAK", "PUNCTUATION"].includes(
-                    word.linebreak
-                )
+                ["EOL_SURE_SPACE", "LINE_BREAK"].includes(word.linebreak)
             ) {
                 pushLine(line)
-                if (word.linebreak !== "PUNCTUATION") currentLine++
+                currentLine++
+                line = []
+            } else if (word.punctuation) {
+                pushLine(line)
                 line = []
             }
         })

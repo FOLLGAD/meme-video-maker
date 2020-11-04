@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { apiUrl, useFetch } from "./apiFetch"
 import { removeNamespace } from "./utils"
 
-export default function () {
+export default function VideoList() {
     const apiFetch = useFetch()
 
     const [data, setData] = useState<{ data: any[]; inProgress: any[] } | null>(
         null
     )
 
-    const getVids = () => {
+    const getVids = useCallback(() => {
         apiFetch("/vids")
             .then((d) => d.json())
             .then((data) => {
                 setData(data)
             })
-    }
+    }, [apiFetch])
 
-    useEffect(() => getVids(), [])
+    useEffect(() => getVids(), [getVids])
 
     return (
         <div className="videolist-container">

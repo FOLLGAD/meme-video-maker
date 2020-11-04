@@ -274,6 +274,19 @@ export async function makeVids(
     return vidPath
 }
 
+const expandOuterBounds = (rects: Rec[]): Rec => {
+    let minx = Math.min(...rects.map(({ x }) => x))
+    let miny = Math.min(...rects.map(({ y }) => y))
+    let xws = rects.map(({ x, width }) => x + width)
+    let yhs = rects.map(({ y, height }) => y + height)
+    return {
+        x: minx,
+        y: miny,
+        width: Math.max(...xws) - minx,
+        height: Math.max(...yhs) - miny,
+    }
+}
+
 async function makeImageThing(
     pipelineObj: Pipeline,
     videoSettings: VideoSettings
@@ -318,57 +331,77 @@ async function makeImageThing(
         return pngf
     }
 
+    // For every "blockuntil" read block that comes after the current stage,
+    // block it!
+    pipeline
+        .filter((s): s is ReadStage => s.type === "read" && s.blockuntil) // that are read and blockuntil...
+        .forEach(({ reads }) => {
+            if (reads.length === 0) return
+            let start = 0
+            let outerBounds: Rec = expandOuterBounds(reads[0].rect)
+            for (let i = 1; i < reads.length; i++) {
+                if (reads[i].line === reads[i - 1].line) {
+                    outerBounds = expandOuterBounds([
+                        ...reads[i].rect,
+                        outerBounds,
+                    ])
+                } else {
+                    for (let o = start; o < i; o++) {
+                        if (reads[o].rect.length !== 0) {
+                            reads[o].rect = [
+                                {
+                                    x: expandOuterBounds(reads[o].rect).x,
+                                    y: outerBounds.y,
+                                    width: expandOuterBounds(reads[o].rect)
+                                        .width,
+                                    height: outerBounds.height,
+                                },
+                            ]
+                        }
+                    }
+                    start = i
+                    outerBounds = expandOuterBounds(reads[i].rect)
+                }
+            }
+
+            for (let o = start; o < reads.length; o++) {
+                if (reads[o].rect.length !== 0) {
+                    reads[o].rect = [
+                        {
+                            x: expandOuterBounds(reads[o].rect).x,
+                            y: outerBounds.y,
+                            width: expandOuterBounds(reads[o].rect).width,
+                            height: outerBounds.height,
+                        },
+                    ]
+                }
+            }
+        })
+
     for (let i = 0; i < pipeline.length; i++) {
         console.time("render_stage")
         const stage = pipeline[i]
         console.log("stage:", stage.type)
-        // if (stage.type === "read") {
-        //     if (stage.reveal) {
-        //         // Clear text
-        //         stage.rect.forEach((rect) =>
-        //             blockingCtx.clearRect(0, 0, width, rect.y + rect.height)
-        //         )
-        //     }
-        // }
 
-        // Replace the canvas with the image
-        imageCanvCtx.drawImage(loadedImage, 0, 0, imageWidth, imageHeight)
-        // Do not draw if on last stage and stage isn't read
-        if (i < pipeline.length - 1 || stage.type !== "read") {
-            // Draw blockage
-            imageCanvCtx.drawImage(
-                blockingCanvas,
-                0,
-                0,
-                imageWidth,
-                imageHeight
-            )
-        }
-
-        imageCanvCtx.fillStyle = blockColor
-        const blockComingReads = () => {
-            // For every "blockuntil" read block that comes after the current stage,
-            // block it!
-            imageCanvCtx.fillStyle = blockColor
-            pipeline
-                .slice(i + 1) // all stages after the current one...
-                .filter(
-                    (s): s is ReadStage => s.type === "read" && s.blockuntil
-                ) // that are read and blockuntil...
-                .forEach(({ reads }) => {
-                    reads.forEach((r) =>
-                        r.rect.forEach(
-                            (r) =>
-                                imageCanvCtx.fillRect(
-                                    r.x,
-                                    r.y,
-                                    r.width,
-                                    r.height
-                                ) // ...fill up all areas covered by the read
-                        )
+        // For every "blockuntil" read block that comes after the current stage,
+        // block it!
+        pipeline
+            .slice(i + 1) // all stages after the current one...
+            .filter((s): s is ReadStage => s.type === "read" && s.blockuntil) // that are read and blockuntil...
+            .forEach(({ reads, rect }) => {
+                // rect.forEach((r) =>
+                //     blockingCtx.fillRect(r.x, r.y, r.width, r.height)
+                // )
+                reads.forEach((read) =>
+                    read.rect.forEach(
+                        (r) => blockingCtx.fillRect(r.x, r.y, r.width, r.height) // ...fill up all areas covered by the read
                     )
-                })
-        }
+                )
+            })
+        // draw the image on the canvas
+        imageCanvCtx.drawImage(loadedImage, 0, 0, imageWidth, imageHeight)
+        // draw the blocker to the canvas
+        imageCanvCtx.drawImage(blockingCanvas, 0, 0, imageWidth, imageHeight)
 
         if (stage.type === "read") {
             let speechDone = false,
@@ -449,7 +482,6 @@ async function makeImageThing(
                                     ) // ...fill up all areas covered by the read
                             )
                         }
-                        blockComingReads()
                     }
 
                     // draw the image on the canvas
@@ -564,8 +596,6 @@ async function makeImageThing(
                 // scene couldn't be rendered, so it won't be pushed to the video-list
             }
         } else if (stage.type === "pause") {
-            blockComingReads()
-
             const pauseTime = Math.min(Math.abs(Number(stage.secs)), 10)
             if (pauseTime === 0.0) continue
 

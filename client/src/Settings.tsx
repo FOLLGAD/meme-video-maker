@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import Modal from "react-modal"
 import { useFetch } from "./apiFetch"
 import { removeNamespace } from "./utils"
@@ -22,7 +22,7 @@ export interface Settings {
     range: number
 }
 
-export default function ({
+export default function SettingsPage({
     settings,
     dispatchSettings,
     onSubmit,
@@ -41,17 +41,17 @@ export default function ({
             .then((files) => {
                 setFiles(files)
             })
-    }, [])
+    }, [apiFetch])
 
-    const getThemes = () => {
+    const getThemes = useCallback(() => {
         apiFetch("/themes")
             .then((d) => d.json())
             .then((themes) => {
                 setThemes(themes)
             })
-    }
+    }, [apiFetch])
 
-    useEffect(() => getThemes(), [])
+    useEffect(() => getThemes(), [getThemes])
 
     const [loading, setLoading] = useState(false)
 
