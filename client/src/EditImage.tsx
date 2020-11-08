@@ -437,7 +437,11 @@ export default function FileImage({
                         reveal: true,
                         added: [],
                     }
-                    addStages([newStage, { type: "div" }])
+                    addStages([
+                        newStage,
+                        { type: "pause", secs: shortestPause },
+                        { type: "div" },
+                    ])
                 }
             }
 
