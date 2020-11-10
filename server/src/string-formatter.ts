@@ -30,6 +30,8 @@ let pausers = [
     "project",
     "will",
     "won't",
+    "turn",
+    "like"
 ]
 
 // /\b\s?(even if|just as|...|after|if)\b/gi
