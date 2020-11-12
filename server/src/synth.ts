@@ -196,9 +196,7 @@ const wrapStringsInDanielSSML = (strings: string[]) => `
 
 const wrapStringsInSSML = (strings: string[]) => `
 <speak>
-    <prosody volume="-2dB">
-        ${insertBookmarks(strings)}
-    </prosody>
+    ${insertBookmarks(strings)}
 </speak>
 `
 
