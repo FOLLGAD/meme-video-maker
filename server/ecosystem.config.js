@@ -10,7 +10,7 @@ module.exports = {
 
     deploy: {
         production: {
-            key: "~/.ssh/redditors-new.pem",
+            key: "~/.ssh/redditors.id_rsa",
             user: "ubuntu",
             host: "image.redditvideomaker.com",
             ref: "origin/master",
