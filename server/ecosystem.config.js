@@ -2,8 +2,8 @@ module.exports = {
     apps: [
         {
             name: "carp",
-            script: "server/dist/server.js",
-            watch: "server/dist",
+            script: "dist/server.js",
+            watch: "dist",
             post_update: ["npm i", "npm run build"],
         },
     ],
@@ -16,7 +16,7 @@ module.exports = {
             repo: "git@github.com:FOLLGAD/carp.git",
             path: "/home/ubuntu/carp",
             "pre-deploy-local": "",
-            "post-deploy": "cd server; git pull; npm ci; npm run build", // PM2 will (hopefully) automatically restart on file changes
+            "post-deploy": "cd server; npm ci; npm run build", // PM2 will (hopefully) automatically restart on file changes
             "pre-setup": "",
         },
     },
