@@ -5,6 +5,7 @@ import * as latinize from "latinize"
 import fetch from "node-fetch"
 import { file } from "tmp-promise"
 import { stringFormatter } from "./string-formatter"
+import { Polly } from "aws-sdk"
 
 function cleanText(text: string): string {
     return text.replace(/\*/g, " ")
@@ -16,7 +17,7 @@ export function synthSpeech({
 }: {
     text: string[]
     voice: string
-}): Promise<{ path: string; segments: string[] }> {
+}): Promise<{ path: string; segments: number[] }> {
     text = text.map((t) => latinize(t))
     text = text.map(cleanText)
 
@@ -24,29 +25,86 @@ export function synthSpeech({
         // If no letter or number is in text, don't produce it
         return Promise.reject("Warning: TTS for current frame is empty")
     }
-    return synthDaniel(text)
 
-    // switch (voice) {
-    //     case "daniel":
+    switch (voice) {
+        case "matthew":
+            return synthPolly(makeInnerSSML(text))
+        case "daniel":
+        default:
+            return synthDaniel(makeInnerSSML(text))
 
-    // case "google-uk":
-    //     return synthGoogle(text, {
-    //         languageCode: "en-GB",
-    //         voiceName: "en-GB-Wavenet-B",
-    //         pitch: -4.4,
-    //         speakingRate: 0.96,
-    //     })
+        // case "google-uk":
+        //     return synthGoogle(text, {
+        //         languageCode: "en-GB",
+        //         voiceName: "en-GB-Wavenet-B",
+        //         pitch: -4.4,
+        //         speakingRate: 0.96,
+        //     })
 
-    // case "google-us":
-    // default:
-    //     // Fallthrough to default
-    //     return synthGoogle(text, {
-    //         speakingRate: 0.98,
-    //         languageCode: "en-US",
-    //         voiceName: "en-US-Wavenet-D",
-    //         pitch: -2.0,
-    //     })
-    // }
+        // case "google-us":
+        // default:
+        //     // Fallthrough to default
+        //     return synthGoogle(text, {
+        //         speakingRate: 0.98,
+        //         languageCode: "en-US",
+        //         voiceName: "en-US-Wavenet-D",
+        //         pitch: -2.0,
+        //     })
+    }
+}
+
+const polly = new Polly({
+    signatureVersion: "v4",
+    region: "eu-central-1",
+})
+export function synthPolly(text: string[]) {
+    console.log(wrapStringsInSSML(text))
+    const promises: Promise<Polly.SynthesizeSpeechOutput>[] = [
+        polly
+            .synthesizeSpeech({
+                TextType: "ssml",
+                Text: wrapStringsInSSML(text),
+                OutputFormat: "json",
+                VoiceId: "Matthew",
+                LanguageCode: "en-US",
+                Engine: "standard",
+                SpeechMarkTypes: ["ssml"],
+                SampleRate: "22050",
+            })
+            .promise(),
+        polly
+            .synthesizeSpeech({
+                TextType: "ssml",
+                Text: wrapStringsInSSML(text),
+                OutputFormat: "mp3",
+                VoiceId: "Matthew",
+                LanguageCode: "en-US",
+                Engine: "standard",
+                SampleRate: "22050",
+            })
+            .promise(),
+    ]
+
+    // Why does AWS Polly require 2 seperate requests for getting speech marks?
+
+    return Promise.all(promises).then(async ([marksData, audioData]) => {
+        if (marksData.AudioStream instanceof Buffer) {
+            let f = await file({ postfix: ".txt" })
+            let fa = await file({ postfix: ".mp3" })
+            fs.writeFileSync(f.path, marksData.AudioStream)
+            // @ts-ignore
+            fs.writeFileSync(fa.path, audioData.AudioStream)
+            const segments = fs
+                .readFileSync(f.path, "utf-8")
+                .trim()
+                .split("\n")
+                .map((a) => JSON.parse(a))
+                .map((s) => s.time / 1000) // convert the time to milliseconds
+
+            return { path: fa.path, segments }
+        }
+        throw new Error("no audio stream")
+    })
 }
 
 // const client = new textToSpeech.TextToSpeechClient({})
@@ -126,7 +184,7 @@ function insertBookmarks(array: string[]) {
     return a.join(" ")
 }
 
-const wrapStringsInSSML = (strings: string[]) => `
+const wrapStringsInDanielSSML = (strings: string[]) => `
     <speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
         <voice name="ScanSoft Daniel_Full_22kHz">
             <prosody volume="80">
@@ -136,12 +194,16 @@ const wrapStringsInSSML = (strings: string[]) => `
     </speak>
 `
 
-// Takes an array of strings and returns a file
-export async function synthDaniel(
-    strings: string[]
-): Promise<{ path: string; segments: string[] }> {
-    let f = await file({ postfix: ".wav" })
+const wrapStringsInSSML = (strings: string[]) => `
+<speak>
+    <prosody volume="-2dB">
+        ${insertBookmarks(strings)}
+    </prosody>
+</speak>
+`
 
+// Takes an array of strings
+export function makeInnerSSML(strings: string[]): string[] {
     let xmlEscapedAndDashed = stringFormatter(
         strings.map(insertBreaks)
     ).map((s) => encodeXML(s))
@@ -162,6 +224,25 @@ export async function synthDaniel(
         }
     })
 
+    return xmlWithBreaks
+}
+
+const timestampToSeconds = (timestamp: string) => {
+    let [h, m, s, ms] = timestamp.split(/[:.]/)
+
+    return (
+        parseInt(h) * 60 * 60 +
+        parseInt(m) * 60 +
+        parseInt(s) +
+        parseFloat("0." + ms)
+    )
+}
+
+async function synthDaniel(
+    ssml
+): Promise<{ path: string; segments: number[] }> {
+    let f = await file({ postfix: ".wav" })
+
     let data
 
     let tries = 0
@@ -170,7 +251,7 @@ export async function synthDaniel(
             data = await fetch("http://tts.redditvideomaker.com/synthesize", {
                 method: "POST",
                 body: JSON.stringify({
-                    string: wrapStringsInSSML(xmlWithBreaks),
+                    string: wrapStringsInDanielSSML(ssml),
                 }),
                 headers: {
                     "Content-Type": "application/json",
@@ -206,6 +287,7 @@ export async function synthDaniel(
         .split("\r\n")
         .slice(0, -1)
         .map((b) => b.split("\t")[1])
+        .map(timestampToSeconds)
 
     return { path: f.path, segments }
 }

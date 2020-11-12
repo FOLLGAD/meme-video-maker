@@ -188,8 +188,7 @@ export default function SettingsPage({
                             onChange={dispatchSet("voice")}
                         >
                             <option value="">Daniel UK</option>
-                            <option value="google-us">Google (US)</option>
-                            <option value="google-uk">Google (UK)</option>
+                            <option value="matthew">Matthew</option>
                         </select>
                     </label>
                 </div>

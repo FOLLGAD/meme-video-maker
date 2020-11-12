@@ -80,17 +80,6 @@ export type Pipeline = {
     image: string
 }
 
-const timestampToSeconds = (timestamp: string) => {
-    let [h, m, s, ms] = timestamp.split(/[:.]/)
-
-    return (
-        parseInt(h) * 60 * 60 +
-        parseInt(m) * 60 +
-        parseInt(s) +
-        parseFloat("0." + ms)
-    )
-}
-
 // Ffprobe
 // Usually takes ~40ms
 const probe = function (path: string) {
@@ -416,7 +405,7 @@ async function makeImageThing(
                 console.timeEnd("synth_speech")
                 speechDone = true
 
-                let realSegments: number[] = segments.map(timestampToSeconds)
+                // segments
                 // .map((t, i, a) =>
                 //     i === a.length - 1 ? t + 0.5 : Math.max(0, t - 0.1)
                 // )
@@ -509,12 +498,12 @@ async function makeImageThing(
 
                 const videoSched = pngs.map((p, i) => ({
                     path: p.path,
-                    duration: realSegments[i] - (realSegments[i - 1] || 0),
+                    duration: segments[i] - (segments[i - 1] || 0),
                 }))
 
                 // console.log(videoSched)
 
-                let durationOfSegment = realSegments[realSegments.length - 1]
+                let durationOfSegment = segments[segments.length - 1]
                 let audioFile = await new Promise<FileResult>(
                     async (res, rej) => {
                         let f = await file({ dir: dir.path, postfix: ".aac" }) // MP3 can't store "AAC", which is what we use for the MP4 audio
