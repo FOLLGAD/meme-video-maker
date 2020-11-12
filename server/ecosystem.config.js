@@ -17,7 +17,7 @@ module.exports = {
             repo: "git@github.com:FOLLGAD/carp.git",
             path: "/home/ubuntu/carp/server",
             "pre-deploy-local": "",
-            "post-deploy": "npm ci && npm run build", // PM2 will (hopefully) automatically restart on file changes
+            "post-deploy": "git pull && npm ci && npm run build", // PM2 will (hopefully) automatically restart on file changes
             "pre-setup": "",
         },
     },
