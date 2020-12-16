@@ -29,23 +29,34 @@ provider:
 
 # you can overwrite defaults here
 #  stage: dev
-#  region: us-east-1
+ region: eu-central-1
 
 # you can add statements to the Lambda function's IAM Role here
-#  iamRoleStatements:
-#    - Effect: "Allow"
-#      Action:
-#        - "s3:ListBucket"
-#      Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
-#    - Effect: "Allow"
-#      Action:
-#        - "s3:PutObject"
-#      Resource:
-#        Fn::Join:
-#          - ""
-#          - - "arn:aws:s3:::"
-#            - "Ref" : "ServerlessDeploymentBucket"
-#            - "/*"
+# He needs dynamodb for themes n shit? yeah
+# He needs S3 for uploads
+ iamRoleStatements:
+   - Effect: "Allow"
+     Action:
+       - "s3:ListBucket"
+       - "s3:PutObject"
+       - "s3:GetObject"
+     Resource: 
+       Fn::Join:
+         - ""
+         - - "arn:aws:s3:::"
+           - "Ref" : "carp-files"
+           - "/*"
+   - Effect: "Allow"
+     Action:
+       - "s3:ListBucket"
+       - "s3:PutObject"
+       - "s3:GetObject"
+     Resource:
+       Fn::Join:
+         - ""
+         - - "arn:aws:s3:::"
+           - "Ref" : "carp-videos"
+           - "/*"
 
 # you can define service wide environment variables here
 #  environment:
@@ -61,8 +72,109 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  hello:
-    handler: handler.hello
+  register:
+    handler: src/auth.register
+    events:
+      - http:
+          path: register
+          method: get
+          cors: true
+  login:
+    handler: src/auth.login
+    events:
+      - http:
+          path: login
+          method: post
+          cors: true
+  logout:
+    handler: src/auth.logout
+    events:
+      - http:
+          path: logout
+          method: post
+          cors: true
+
+  getUploadUrl:
+    handler: src/upload-url.get
+    events:
+      - http:
+          path: get-upload-url
+          method: post
+          cors: true
+
+  vision:
+    handler: src/vision.vision
+    events:
+      - http:
+          path: vision
+          method: post
+          cors: true
+  render:
+    handler: src/render.render
+    events:
+      - http:
+          path: render
+          method: post
+          cors: true
+
+  video:
+    handler: src/videos.get
+    events:
+      - http:
+          path: videos/{id}
+          method: get
+          cors: true
+  videos:
+    handler: src/videos.getAll
+    events:
+      - http:
+          path: videos
+          method: get
+          cors: true
+
+  file:
+    handler: src/files.get
+    events:
+      - http:
+          path: files/{id}
+          method: get
+          cors: true
+  deleteFile:
+    handler: src/files.delete
+    events:
+      - http:
+          path: files/{id}
+          method: delete
+          cors: true
+  files:
+    handler: src/files.getAll
+    events:
+      - http:
+          path: files
+          method: get
+          cors: true
+
+  getThemes:
+    handler: src/themes.getAll
+    events:
+      - http:
+          path: themes
+          method: get
+          cors: true
+  createThemes:
+    handler: src/themes.create
+    events:
+      - http:
+          path: themes
+          method: post
+          cors: true
+  deleteTheme:
+    handler: src/themes.delete
+    events:
+      - http:
+          path: themes/{id}
+          method: delete
+          cors: true
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
