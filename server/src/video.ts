@@ -1,9 +1,10 @@
 // TODO: Could also use gm for image manipulation: https://github.com/aheckmann/gm
 import * as Canvas from "canvas"
 import * as ffmpeg from "fluent-ffmpeg"
-import { createWriteStream, writeFileSync } from "fs"
+import { createWriteStream, writeFileSync, renameSync } from "fs"
 import { join } from "path"
 import {
+    DirectoryResult,
     dirSync,
     file,
     FileResult,
@@ -13,7 +14,7 @@ import {
 import { synthSpeech } from "./synth"
 import { makeIntoGCSUrl, signedUrlIntoId } from "./utils"
 
-const dir = dirSync({ unsafeCleanup: true })
+const dir: DirectoryResult = dirSync({ unsafeCleanup: true })
 
 setGracefulCleanup()
 
@@ -24,8 +25,12 @@ process.on(
         try {
             console.time("making video")
             const vidPath = await makeVids(pipes, videosettings)
+            const newFile = await file({ keep: true, name: vidPath.path })
+
+            renameSync(vidPath.path, newFile.path)
+
             console.timeEnd("making video")
-            process.send!({ isError: false, data: vidPath, file: vidPath })
+            process.send!({ isError: false, data: newFile, file: newFile })
         } catch (error) {
             process.send!({ isError: true, data: error })
         }
