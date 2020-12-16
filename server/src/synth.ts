@@ -8,7 +8,7 @@ import { stringFormatter } from "./string-formatter"
 import { Polly } from "aws-sdk"
 
 function cleanText(text: string): string {
-    return text.replace(/\*>/g, " ")
+    return text.replace(/\*></g, " ")
 }
 
 export function synthSpeech({
