@@ -2,11 +2,13 @@
 
 The second automated Youtube video maker I made. Only now, it's time for memes.
 
-It allows users to easily create a video like this one, which is made by using only this tool.
-
-[![3 am memes](https://img.youtube.com/vi/ifVO8gNJTb8/default.jpg)](https://youtu.be/ifVO8gNJTb8)
+It allows users to easily create a video like this one, which is made by using only this tool: https://youtu.be/ifVO8gNJTb8
 
 ## What it does
+
+Offers a clickable GUI where you can select multiple image and GIF memes. It automatically reads all text in the memes and lets you read them out, while revealing them part-by-part.
+
+This means a video can be created in a matter of seconds or minutes depending on length, no editing required.
 
 ### Creating a video
 
