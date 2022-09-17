@@ -19,3 +19,47 @@ https://user-images.githubusercontent.com/1856197/190837485-da090660-5290-46a9-9
 ### Final video (example)
 
 https://user-images.githubusercontent.com/1856197/190837482-e0a248a8-1268-41d5-b69c-5c33d2c5e4c0.mp4
+
+
+
+
+
+
+## Setup
+
+- Node v14 (use `fnm` or `nvm` to easily switch between versions)
+
+- Install `ffmpeg`, it's a pre-requisite
+
+Set environment variables in `{client,server}/.env` (see `.env.example` for reference)
+
+Needs AWS keys for S3 and DynamoDB. Needs Google Cloud credentials for the Image-to-Text OCR.
+
+Uses two AWS S3 buckets, and one dynamoDB table. See `src/server.ts`
+
+## Run it
+
+### Server
+
+Build and run the server production build
+
+```
+$ npm i
+
+$ npm run build
+
+$ npm start
+```
+
+### Client
+
+Build the client
+
+```
+$ npm run client-build
+
+# Now client/build contains a static build of the site
+```
+
+Serve the builded directory on netlify or any web server
+
