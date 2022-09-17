@@ -4,7 +4,7 @@ The second automated Youtube video maker I made. Only now, it's time for memes.
 
 It allows users to easily create a video like this one, which is made by using only this tool.
 
-[![3 am memes](https://yt3.ggpht.com/ytc/AMLnZu8c5HQhLkLTS491gXJFkXWe4tIKjPV79F1FRcb0=s176-c-k-c0x00ffffff-no-rj)](https://youtu.be/ifVO8gNJTb8)
+[![3 am memes](https://img.youtube.com/vi/ifVO8gNJTb8/default.jpg)](https://youtu.be/ifVO8gNJTb8)
 
 ## What it does
 
